@@ -51,19 +51,20 @@ fun Route.reverseProxyRoutes(authService: AuthService, config: ProxyConfig) {
             val proxiedMethod = call.request.httpMethod
             val proxiedUri = call.request.uri
 
+            val blockedRequestHeaders = setOf(
+                "cookie", "host", "x-user-id", "x-souz-proxy-auth", "x-forwarded-user", 
+                "x-forwarded-email", "authorization", "content-length", "transfer-encoding", 
+                "connection", "upgrade", "keep-alive", "proxy-authenticate", 
+                "proxy-authorization", "te", "trailer"
+            )
+
             try {
                 val response = proxyHttpClient.request("${config.backendUrl}$proxiedUri") {
                     method = proxiedMethod
                     headers {
                         proxiedHeaders.forEach { key, values ->
                             // Strip dangerous headers
-                            if (!key.equals(HttpHeaders.Cookie, ignoreCase = true) &&
-                                !key.equals(HttpHeaders.Host, ignoreCase = true) &&
-                                !key.equals("X-User-Id", ignoreCase = true) &&
-                                !key.equals("X-Souz-Proxy-Auth", ignoreCase = true) &&
-                                !key.equals(HttpHeaders.ContentLength, ignoreCase = true) &&
-                                !key.equals(HttpHeaders.TransferEncoding, ignoreCase = true)
-                            ) {
+                            if (!blockedRequestHeaders.contains(key.lowercase())) {
                                 values.forEach { value ->
                                     append(key, value)
                                 }
@@ -75,10 +76,8 @@ fun Route.reverseProxyRoutes(authService: AuthService, config: ProxyConfig) {
                     }
 
                     // Forward body if present
-                    val channel = call.receiveChannel()
-                    val contentLength = call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
-                    if (contentLength != null && contentLength > 0) {
-                        setBody(channel)
+                    if (proxiedMethod in listOf(HttpMethod.Post, HttpMethod.Put, HttpMethod.Patch)) {
+                        setBody(call.receiveChannel())
                     }
                 }
 
@@ -128,7 +127,11 @@ fun Route.reverseProxyRoutes(authService: AuthService, config: ProxyConfig) {
             return@webSocket
         }
 
-        val backendWsUrl = "${config.backendUrl.replace("http", "ws")}${call.request.uri}"
+        val backendWsBase = config.backendUrl
+            .replaceFirst("https://", "wss://")
+            .replaceFirst("http://", "ws://")
+
+        val backendWsUrl = "$backendWsBase${call.request.uri}"
 
         try {
             proxyHttpClient.webSocket(backendWsUrl, request = {

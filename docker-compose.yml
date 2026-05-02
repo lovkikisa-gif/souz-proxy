@@ -12,12 +12,12 @@ services:
       PUBLIC_BASE_URL: "http://localhost:8080"
 
       BACKEND_URL: "http://souz-backend:8080"
-      SOUZ_BACKEND_PROXY_TOKEN: "${SOUZ_BACKEND_PROXY_TOKEN:-default-dev-proxy-token}"
+      SOUZ_BACKEND_PROXY_TOKEN: "${SOUZ_BACKEND_PROXY_TOKEN}"
 
-      PROXY_DATABASE_URL: "postgres://souz_proxy:${PROXY_DB_PASSWORD:-souz_proxy_pass}@proxy-db:5432/souz_proxy"
+      PROXY_DATABASE_URL: "postgres://souz_proxy:${PROXY_DB_PASSWORD}@proxy-db:5432/souz_proxy"
 
-      SESSION_HASH_SECRET: "${SESSION_HASH_SECRET:-default-dev-session-secret}"
-      WELCOME_KEY_SECRET: "${WELCOME_KEY_SECRET:-default-dev-welcome-secret}"
+      SESSION_HASH_SECRET: "${SESSION_HASH_SECRET}"
+      WELCOME_KEY_SECRET: "${WELCOME_KEY_SECRET}"
 
       COOKIE_NAME: "souz_session"
       COOKIE_SECURE: "false"
@@ -36,7 +36,7 @@ services:
     environment:
       POSTGRES_DB: "souz_proxy"
       POSTGRES_USER: "souz_proxy"
-      POSTGRES_PASSWORD: "${PROXY_DB_PASSWORD:-souz_proxy_pass}"
+      POSTGRES_PASSWORD: "${PROXY_DB_PASSWORD}"
     volumes:
       - proxy-db-data:/var/lib/postgresql/data
     expose:
@@ -50,14 +50,14 @@ services:
     environment:
       SOUZ_BACKEND_HOST: "0.0.0.0"
       SOUZ_BACKEND_PORT: "8080"
-      SOUZ_BACKEND_PROXY_TOKEN: "${SOUZ_BACKEND_PROXY_TOKEN:-default-dev-proxy-token}"
+      SOUZ_BACKEND_PROXY_TOKEN: "${SOUZ_BACKEND_PROXY_TOKEN}"
 
       SOUZ_STORAGE_MODE: "postgres"
       SOUZ_BACKEND_DB_HOST: "backend-db"
       SOUZ_BACKEND_DB_PORT: "5432"
       SOUZ_BACKEND_DB_NAME: "souz"
       SOUZ_BACKEND_DB_USER: "souz"
-      SOUZ_BACKEND_DB_PASSWORD: "${BACKEND_DB_PASSWORD:-souz_backend_pass}"
+      SOUZ_BACKEND_DB_PASSWORD: "${BACKEND_DB_PASSWORD}"
     expose:
       - "8080"
     depends_on:
@@ -71,7 +71,7 @@ services:
     environment:
       POSTGRES_DB: "souz"
       POSTGRES_USER: "souz"
-      POSTGRES_PASSWORD: "${BACKEND_DB_PASSWORD:-souz_backend_pass}"
+      POSTGRES_PASSWORD: "${BACKEND_DB_PASSWORD}"
     volumes:
       - backend-db-data:/var/lib/postgresql/data
     expose:

@@ -11,7 +11,16 @@ object DatabaseFactory {
 
     fun init(databaseUrl: String) {
         val config = HikariConfig().apply {
-            jdbcUrl = databaseUrl.replace("postgres://", "jdbc:postgresql://")
+            if (databaseUrl.startsWith("postgres://")) {
+                val uri = java.net.URI(databaseUrl)
+                jdbcUrl = "jdbc:postgresql://${uri.host}:${uri.port}${uri.path}"
+                uri.userInfo?.let { userInfo ->
+                    username = userInfo.substringBefore(":")
+                    password = userInfo.substringAfter(":")
+                }
+            } else {
+                jdbcUrl = databaseUrl
+            }
             driverClassName = "org.postgresql.Driver"
             maximumPoolSize = 10
             isAutoCommit = false

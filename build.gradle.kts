@@ -29,6 +29,7 @@ dependencies {
     implementation("io.ktor:ktor-server-websockets-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-call-logging-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-forwarded-header-jvm:$ktor_version")
+    implementation("io.ktor:ktor-server-compression-jvm:$ktor_version")
 
     // Ktor Client
     implementation("io.ktor:ktor-client-core-jvm:$ktor_version")
@@ -51,5 +52,13 @@ dependencies {
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions {
         jvmTarget = "21"
+    }
+}
+
+tasks.register<JavaExec>("hashWelcomeKey") {
+    mainClass.set("ru.souz.proxy.app.HashWelcomeKeyKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    if (project.hasProperty("args")) {
+        args((project.property("args") as String).split(" "))
     }
 }

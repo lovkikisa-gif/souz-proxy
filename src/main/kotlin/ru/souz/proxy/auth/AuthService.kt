@@ -34,7 +34,7 @@ class AuthService(private val config: ProxyConfig) {
             if (welcomeKey.usedAt != null) {
                 throw AuthException("invalid_welcome_key", "Welcome key is invalid, expired or already used.")
             }
-            if (welcomeKey.expiresAt != null && welcomeKey.expiresAt.isBefore(Instant.now())) {
+            if (welcomeKey.expiresAt != null && !welcomeKey.expiresAt.isAfter(Instant.now())) {
                 throw AuthException("invalid_welcome_key", "Welcome key is invalid, expired or already used.")
             }
 
