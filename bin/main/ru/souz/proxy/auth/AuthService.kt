@@ -6,22 +6,28 @@ import java.time.Instant
 
 class AuthException(val code: String, message: String) : RuntimeException(message)
 
+internal fun WelcomeKey.isUsableAt(now: Instant): Boolean {
+    return usedAt == null && (expiresAt == null || expiresAt.isAfter(now))
+}
+
 class AuthService(private val config: ProxyConfig) {
 
     fun verifyWelcomeKey(rawKey: String): Boolean {
         val keyHash = TokenHasher.hashWelcomeKey(config.welcomeKeySecret, rawKey)
+        val now = Instant.now()
         return DatabaseFactory.withConnection { conn ->
             val repo = WelcomeKeyRepository(conn)
             // For simple verification we can use forUpdate query since we just want to read.
             // Actually, we don't need forUpdate here, but we can reuse the method. 
             // Better to write a simple check or use the existing one and discard transaction.
             val key = repo.findByKeyHashForUpdate(keyHash)
-            key != null && key.usedAt == null && (key.expiresAt == null || key.expiresAt.isAfter(Instant.now()))
+            key?.isUsableAt(now) == true
         }
     }
 
     fun signup(req: SignupRequest, userAgent: String?, ipHash: String?): AuthResponseWithCookie {
         val keyHash = TokenHasher.hashWelcomeKey(config.welcomeKeySecret, req.welcomeKey)
+        val now = Instant.now()
         
         return DatabaseFactory.withConnection { conn ->
             val welcomeRepo = WelcomeKeyRepository(conn)
@@ -31,10 +37,7 @@ class AuthService(private val config: ProxyConfig) {
             val welcomeKey = welcomeRepo.findByKeyHashForUpdate(keyHash)
                 ?: throw AuthException("invalid_welcome_key", "Welcome key is invalid, expired or already used.")
 
-            if (welcomeKey.usedAt != null) {
-                throw AuthException("invalid_welcome_key", "Welcome key is invalid, expired or already used.")
-            }
-            if (welcomeKey.expiresAt != null && !welcomeKey.expiresAt.isAfter(Instant.now())) {
+            if (!welcomeKey.isUsableAt(now)) {
                 throw AuthException("invalid_welcome_key", "Welcome key is invalid, expired or already used.")
             }
 

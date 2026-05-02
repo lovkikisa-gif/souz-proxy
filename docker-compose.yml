@@ -3,13 +3,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      additional_contexts:
+        frontend-src: "${SOUZ_WEB_BUILD_CONTEXT:-/Users/duxx/XCodeProjects/souz-web/souz-web}"
     restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
       PROXY_HOST: "0.0.0.0"
       PROXY_PORT: "8080"
-      PUBLIC_BASE_URL: "http://localhost:8080"
+      PUBLIC_BASE_URL: "http://localhost:8080" # dev only; use HTTPS URL in production
 
       BACKEND_URL: "http://souz-backend:8080"
       SOUZ_BACKEND_PROXY_TOKEN: "${SOUZ_BACKEND_PROXY_TOKEN}"
@@ -20,7 +22,7 @@ services:
       WELCOME_KEY_SECRET: "${WELCOME_KEY_SECRET}"
 
       COOKIE_NAME: "souz_session"
-      COOKIE_SECURE: "false"
+      COOKIE_SECURE: "false" # dev only; set true in production behind HTTPS
       SESSION_TTL_DAYS: "30"
       ENV: "development"
     depends_on:

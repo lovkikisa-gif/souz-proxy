@@ -11,6 +11,16 @@ plugins {
 group = "ru.souz.proxy"
 version = "1.0.0"
 
+kotlin {
+    jvmToolchain(21)
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
 application {
     mainClass.set("ru.souz.proxy.app.ProxyMainKt")
 }
@@ -47,12 +57,18 @@ dependencies {
 
     // Logging
     implementation("ch.qos.logback:logback-classic:1.5.6")
+
+    testImplementation(kotlin("test"))
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions {
         jvmTarget = "21"
     }
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 tasks.register<JavaExec>("hashWelcomeKey") {

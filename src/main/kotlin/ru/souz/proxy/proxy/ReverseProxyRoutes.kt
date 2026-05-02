@@ -14,6 +14,7 @@ import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.util.*
 import io.ktor.websocket.*
+import io.ktor.utils.io.*
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.launch
 import ru.souz.proxy.app.ProxyConfig
@@ -132,6 +133,8 @@ fun Route.reverseProxyRoutes(authService: AuthService, config: ProxyConfig) {
             .replaceFirst("http://", "ws://")
 
         val backendWsUrl = "$backendWsBase${call.request.uri}"
+        val browserSession = this
+        val logger = application.environment.log
 
         try {
             proxyHttpClient.webSocket(backendWsUrl, request = {
@@ -141,7 +144,6 @@ fun Route.reverseProxyRoutes(authService: AuthService, config: ProxyConfig) {
                 }
             }) {
                 val backendSession = this
-                val browserSession = this@webSocket
 
                 // From Browser to Backend
                 val job1 = launch {
@@ -152,7 +154,7 @@ fun Route.reverseProxyRoutes(authService: AuthService, config: ProxyConfig) {
                     } catch (e: ClosedReceiveChannelException) {
                         // ignore
                     } catch (e: Exception) {
-                        call.application.environment.log.error("WS browser->backend error", e)
+                        logger.error("WS browser->backend error", e)
                     } finally {
                         backendSession.close()
                     }
@@ -167,7 +169,7 @@ fun Route.reverseProxyRoutes(authService: AuthService, config: ProxyConfig) {
                     } catch (e: ClosedReceiveChannelException) {
                         // ignore
                     } catch (e: Exception) {
-                        call.application.environment.log.error("WS backend->browser error", e)
+                        logger.error("WS backend->browser error", e)
                     } finally {
                         browserSession.close()
                     }
