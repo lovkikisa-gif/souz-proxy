@@ -9,11 +9,19 @@ import io.ktor.server.routing.*
 import ru.souz.proxy.app.ProxyConfig
 import ru.souz.proxy.http.ErrorDto
 import ru.souz.proxy.http.ErrorEnvelope
+import ru.souz.proxy.security.AttemptRateLimiter
 
-fun Route.authRoutes(authService: AuthService, config: ProxyConfig) {
+fun Route.authRoutes(
+    authService: AuthServicePort,
+    config: ProxyConfig,
+    rateLimiter: AttemptRateLimiter
+) {
 
     post("/auth/welcome/verify") {
         val req = call.receive<VerifyWelcomeKeyRequest>()
+        val clientIp = clientIp(call)
+        rateLimiter.checkOrThrow("auth:welcome-verify:ip:$clientIp")
+        rateLimiter.checkOrThrow("auth:welcome-verify:key:${req.welcomeKey.trim()}")
         val isValid = try {
             authService.verifyWelcomeKey(req.welcomeKey)
         } catch (e: Exception) {
@@ -32,6 +40,9 @@ fun Route.authRoutes(authService: AuthService, config: ProxyConfig) {
 
     post("/auth/signup") {
         val req = call.receive<SignupRequest>()
+        val clientIp = clientIp(call)
+        rateLimiter.checkOrThrow("auth:signup:ip:$clientIp")
+        rateLimiter.checkOrThrow("auth:signup:username:${req.username.trim().lowercase()}")
         if (req.password != req.confirmPassword) {
             call.respond(
                 HttpStatusCode.BadRequest,
@@ -55,7 +66,7 @@ fun Route.authRoutes(authService: AuthService, config: ProxyConfig) {
         }
 
         val userAgent = call.request.headers[HttpHeaders.UserAgent]
-        val ipHash = call.request.origin.remoteHost // for MVP
+        val ipHash = clientIp
 
         val res = authService.signup(req, userAgent, ipHash)
         setSessionCookie(call, config, res.rawSessionToken)
@@ -64,8 +75,11 @@ fun Route.authRoutes(authService: AuthService, config: ProxyConfig) {
 
     post("/auth/login") {
         val req = call.receive<LoginRequest>()
+        val clientIp = clientIp(call)
+        rateLimiter.checkOrThrow("auth:login:ip:$clientIp")
+        rateLimiter.checkOrThrow("auth:login:username:${req.username.trim().lowercase()}")
         val userAgent = call.request.headers[HttpHeaders.UserAgent]
-        val ipHash = call.request.origin.remoteHost
+        val ipHash = clientIp
 
         val res = authService.login(req, userAgent, ipHash)
         setSessionCookie(call, config, res.rawSessionToken)
@@ -122,4 +136,11 @@ private fun clearSessionCookie(call: ApplicationCall, config: ProxyConfig) {
             extensions = mapOf("SameSite" to "Lax")
         )
     )
+}
+
+private fun clientIp(call: ApplicationCall): String {
+    return call.request.local.remoteHost
+        .takeIf { it.isNotBlank() }
+        ?: call.request.origin.remoteHost.takeIf { it.isNotBlank() }
+        ?: "unknown"
 }

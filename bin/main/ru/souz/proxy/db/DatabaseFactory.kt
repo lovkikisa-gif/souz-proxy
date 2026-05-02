@@ -50,4 +50,17 @@ object DatabaseFactory {
             result
         }
     }
+
+    fun isReady(): Boolean {
+        if (!::dataSource.isInitialized) {
+            return false
+        }
+        return runCatching {
+            dataSource.connection.use { conn ->
+                conn.prepareStatement("SELECT 1").use { stmt ->
+                    stmt.executeQuery().use { rs -> rs.next() && rs.getInt(1) == 1 }
+                }
+            }
+        }.getOrDefault(false)
+    }
 }

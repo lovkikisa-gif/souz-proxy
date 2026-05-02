@@ -10,9 +10,9 @@ internal fun WelcomeKey.isUsableAt(now: Instant): Boolean {
     return usedAt == null && (expiresAt == null || expiresAt.isAfter(now))
 }
 
-class AuthService(private val config: ProxyConfig) {
+class AuthService(private val config: ProxyConfig) : AuthServicePort {
 
-    fun verifyWelcomeKey(rawKey: String): Boolean {
+    override fun verifyWelcomeKey(rawKey: String): Boolean {
         val keyHash = TokenHasher.hashWelcomeKey(config.welcomeKeySecret, rawKey)
         val now = Instant.now()
         return DatabaseFactory.withConnection { conn ->
@@ -25,7 +25,7 @@ class AuthService(private val config: ProxyConfig) {
         }
     }
 
-    fun signup(req: SignupRequest, userAgent: String?, ipHash: String?): AuthResponseWithCookie {
+    override fun signup(req: SignupRequest, userAgent: String?, ipHash: String?): AuthResponseWithCookie {
         val keyHash = TokenHasher.hashWelcomeKey(config.welcomeKeySecret, req.welcomeKey)
         val now = Instant.now()
         
@@ -62,7 +62,7 @@ class AuthService(private val config: ProxyConfig) {
         }
     }
 
-    fun login(req: LoginRequest, userAgent: String?, ipHash: String?): AuthResponseWithCookie {
+    override fun login(req: LoginRequest, userAgent: String?, ipHash: String?): AuthResponseWithCookie {
         return DatabaseFactory.withConnection { conn ->
             val userRepo = UserRepository(conn)
             val sessionRepo = SessionRepository(conn)
@@ -90,14 +90,14 @@ class AuthService(private val config: ProxyConfig) {
         }
     }
 
-    fun logout(rawSessionToken: String) {
+    override fun logout(rawSessionToken: String) {
         val sessionHash = TokenHasher.hashSessionToken(config.sessionHashSecret, rawSessionToken)
         DatabaseFactory.withConnection { conn ->
             SessionRepository(conn).revoke(sessionHash)
         }
     }
 
-    fun getMe(rawSessionToken: String): AuthUserDto {
+    override fun getMe(rawSessionToken: String): AuthUserDto {
         val sessionHash = TokenHasher.hashSessionToken(config.sessionHashSecret, rawSessionToken)
         return DatabaseFactory.withConnection { conn ->
             val session = SessionRepository(conn).findBySessionHash(sessionHash)
@@ -118,7 +118,7 @@ class AuthService(private val config: ProxyConfig) {
         }
     }
 
-    fun getUserIdBySessionToken(rawSessionToken: String): String? {
+    override fun getUserIdBySessionToken(rawSessionToken: String): String? {
         val sessionHash = TokenHasher.hashSessionToken(config.sessionHashSecret, rawSessionToken)
         return DatabaseFactory.withConnection { conn ->
             val session = SessionRepository(conn).findBySessionHash(sessionHash) ?: return@withConnection null

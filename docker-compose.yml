@@ -3,8 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      additional_contexts:
-        frontend-src: "${SOUZ_WEB_BUILD_CONTEXT:-/Users/duxx/XCodeProjects/souz-web/souz-web}"
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -24,10 +22,17 @@ services:
       COOKIE_NAME: "souz_session"
       COOKIE_SECURE: "false" # dev only; set true in production behind HTTPS
       SESSION_TTL_DAYS: "30"
+      WS_ALLOWED_ORIGINS: "http://localhost:8080"
       ENV: "development"
     depends_on:
       - proxy-db
       - souz-backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/ready || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     networks:
       - public
       - private
@@ -43,6 +48,11 @@ services:
       - proxy-db-data:/var/lib/postgresql/data
     expose:
       - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U souz_proxy -d souz_proxy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - private
 
@@ -78,6 +88,11 @@ services:
       - backend-db-data:/var/lib/postgresql/data
     expose:
       - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U souz -d souz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - private
 

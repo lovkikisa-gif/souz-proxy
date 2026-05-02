@@ -1,5 +1,6 @@
 package ru.souz.proxy.http
 
+import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
 import java.io.File
@@ -14,10 +15,17 @@ fun Route.staticRoutes() {
 
     get("{...}") {
         val path = call.request.path()
+        if (path.startsWith("/agent")) {
+            call.respond(HttpStatusCode.NotFound)
+            return@get
+        }
         if (
             path.startsWith("/auth/") ||
             path.startsWith("/v1/") ||
-            path == "/healthz"
+            path == "/health" ||
+            path == "/healthz" ||
+            path == "/ready" ||
+            path == "/readyz"
         ) return@get
 
         val file = File("public/index.html")
