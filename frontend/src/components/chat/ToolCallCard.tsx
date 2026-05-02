@@ -1,0 +1,28 @@
+import { useState } from "react";
+import type { ToolCall } from "../../types/chat";
+
+export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
+  const [expanded, setExpanded] = useState(false);
+  const statusColor = { running: "var(--color-info)", finished: "var(--color-success)", failed: "var(--color-error)" }[toolCall.status];
+  const statusIcon = { running: "⏳", finished: "✓", failed: "✗" }[toolCall.status];
+
+  return (
+    <div style={{ padding: "8px 12px", background: "var(--color-bg-primary)", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border)" }}>
+      <div onClick={() => setExpanded(!expanded)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ color: statusColor, fontSize: "0.75rem" }}>{statusIcon}</span>
+          <span style={{ fontSize: "0.8125rem", fontWeight: 500, fontFamily: "var(--font-mono)" }}>{toolCall.toolName}</span>
+          {toolCall.durationMs != null && <span style={{ fontSize: "0.6875rem", color: "var(--color-text-muted)" }}>{toolCall.durationMs}ms</span>}
+        </div>
+        {toolCall.status === "running" && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-info)", animation: "pulse-glow 1.5s infinite" }} />}
+      </div>
+      {expanded && (
+        <div style={{ marginTop: 8, fontSize: "0.75rem" }}>
+          {toolCall.argumentsPreview && <pre style={{ background: "var(--color-bg-tertiary)", padding: 8, borderRadius: 4, overflow: "auto", maxHeight: 120, fontSize: "0.6875rem", fontFamily: "var(--font-mono)", color: "var(--color-text-secondary)" }}>{toolCall.argumentsPreview}</pre>}
+          {toolCall.resultPreview && <pre style={{ background: "var(--color-bg-tertiary)", padding: 8, borderRadius: 4, overflow: "auto", maxHeight: 120, fontSize: "0.6875rem", fontFamily: "var(--font-mono)", color: "var(--color-text-secondary)", marginTop: 4 }}>{toolCall.resultPreview}</pre>}
+          {toolCall.error && <div style={{ padding: 8, background: "rgba(248,113,113,0.1)", borderRadius: 4, color: "var(--color-error)", marginTop: 4 }}>{toolCall.error}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
