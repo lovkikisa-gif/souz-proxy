@@ -5,6 +5,17 @@ import kotlin.test.assertFailsWith
 
 class ProxyConfigTest {
     @Test
+    fun `non-test config rejects default dev proxy token`() {
+        assertFailsWith<IllegalArgumentException> {
+            ProxyConfig.fromEnv(
+                developmentEnv(
+                    "SOUZ_BACKEND_PROXY_TOKEN" to "default-dev-proxy-token"
+                )
+            )
+        }
+    }
+
+    @Test
     fun `production config rejects default dev proxy token`() {
         assertFailsWith<IllegalArgumentException> {
             ProxyConfig.fromEnv(
@@ -71,5 +82,14 @@ class ProxyConfigTest {
             "SESSION_TTL_DAYS" to "30",
             "ENV" to "production"
         ) + overrides
+    }
+
+    private fun developmentEnv(vararg overrides: Pair<String, String>): Map<String, String> {
+        return productionEnv(
+            "PUBLIC_BASE_URL" to "http://localhost:8080",
+            "COOKIE_SECURE" to "false",
+            "ENV" to "development",
+            *overrides
+        )
     }
 }

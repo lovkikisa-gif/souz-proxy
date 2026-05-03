@@ -1,12 +1,19 @@
 import { apiGet, apiPost, apiPatch } from "./http";
 import type { Chat } from "../types/chat";
+import { requireFieldResponse, unwrapItemsResponse } from "./responses";
 
-export function getChats(): Promise<Chat[]> {
-  return apiGet<Chat[]>("/v1/chats");
+export async function getChats(): Promise<Chat[]> {
+  return unwrapItemsResponse(
+    await apiGet<{ items?: Chat[] | null } | Chat[]>("/v1/chats")
+  );
 }
 
-export function createChat(): Promise<Chat> {
-  return apiPost<Chat>("/v1/chats");
+export async function createChat(): Promise<Chat> {
+  return requireFieldResponse(
+    await apiPost<{ chat?: Chat | null } | Chat>("/v1/chats", {}),
+    "chat",
+    "/v1/chats"
+  );
 }
 
 export function updateChatTitle(
@@ -16,10 +23,10 @@ export function updateChatTitle(
   return apiPatch<Chat>(`/v1/chats/${chatId}/title`, { title });
 }
 
-export function archiveChat(chatId: string): Promise<void> {
-  return apiPost<void>(`/v1/chats/${chatId}/archive`);
+export function archiveChat(chatId: string): Promise<Chat> {
+  return apiPost<Chat>(`/v1/chats/${chatId}/archive`);
 }
 
-export function unarchiveChat(chatId: string): Promise<void> {
-  return apiPost<void>(`/v1/chats/${chatId}/unarchive`);
+export function unarchiveChat(chatId: string): Promise<Chat> {
+  return apiPost<Chat>(`/v1/chats/${chatId}/unarchive`);
 }

@@ -1,27 +1,69 @@
 import { useState, useEffect } from "react";
-import { updateSettings } from "../../api/settings";
+import { getSettings, updateSettings } from "../../api/settings";
 import { useAuth } from "../../auth/useAuth";
 import { Button } from "../ui/Button";
 import { showToast } from "../ui/Toast";
 
+function unique(values: string[]): string[] {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
 export function ToolSettingsForm() {
-  const { bootstrap, refreshBootstrap } = useAuth();
+  const {
+    bootstrap,
+    onboarding,
+    refreshBootstrap,
+    refreshOnboarding,
+  } = useAuth();
+  const seedSettings = bootstrap?.settings ?? onboarding?.currentSettings ?? null;
   const [enabled, setEnabled] = useState<string[]>([]);
   const [showTool, setShowTool] = useState(true);
   const [streaming, setStreaming] = useState(true);
+  const [loading, setLoading] = useState(!seedSettings);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  const allTools = bootstrap?.capabilities.tools ?? [];
+  const allTools = unique([
+    ...(bootstrap?.capabilities.tools ?? []),
+    ...enabled,
+  ]);
 
   useEffect(() => {
-    if (bootstrap?.settings) {
-      setEnabled(bootstrap.settings.enabledTools);
-      setShowTool(bootstrap.settings.showToolEvents);
-      setStreaming(bootstrap.settings.streamingMessages);
+    if (seedSettings && !dirty) {
+      setEnabled(seedSettings.enabledTools);
+      setShowTool(seedSettings.showToolEvents);
+      setStreaming(seedSettings.streamingMessages);
+      setLoading(false);
       setDirty(false);
     }
-  }, [bootstrap?.settings]);
+  }, [dirty, seedSettings]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSettings = async () => {
+      try {
+        const settings = await getSettings();
+        if (!cancelled && !dirty) {
+          setEnabled(settings.enabledTools);
+          setShowTool(settings.showToolEvents);
+          setStreaming(settings.streamingMessages);
+        }
+      } catch {
+        // keep seed settings
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadSettings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dirty]);
 
   const toggleTool = (t: string) => {
     setEnabled((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]);
@@ -32,12 +74,16 @@ export function ToolSettingsForm() {
     setSaving(true);
     try {
       await updateSettings({ enabledTools: enabled, showToolEvents: showTool, streamingMessages: streaming });
-      await refreshBootstrap();
+      await Promise.allSettled([refreshBootstrap(), refreshOnboarding()]);
       setDirty(false);
       showToast("Settings saved", "success");
     } catch { showToast("Failed to save"); }
     finally { setSaving(false); }
   };
+
+  if (loading && allTools.length === 0 && enabled.length === 0) {
+    return <div className="skeleton" style={{ height: 180, width: "100%" }} />;
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>

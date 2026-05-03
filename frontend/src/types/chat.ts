@@ -1,6 +1,6 @@
 export interface Chat {
   id: string;
-  title: string;
+  title: string | null;
   archived: boolean;
   createdAt: string;
   updatedAt: string;
@@ -40,6 +40,13 @@ export interface ToolCall {
   durationMs?: number | null;
 }
 
+export type OptionStatus =
+  | "pending"
+  | "answered"
+  | "cancelled"
+  | "expired"
+  | "failed";
+
 export interface OptionItem {
   id: string;
   label: string;
@@ -54,7 +61,7 @@ export interface OptionRequest {
   selectionMode: "single" | "multiple";
   options: OptionItem[];
   allowFreeText: boolean;
-  status: "pending" | "answered" | "failed";
+  status: OptionStatus;
   selectedOptionIds?: string[];
   freeText?: string | null;
 }
@@ -65,10 +72,27 @@ export interface AnswerOptionRequest {
   metadata?: Record<string, string>;
 }
 
+export type ExecutionStatus =
+  | "queued"
+  | "running"
+  | "waiting_option"
+  | "cancelling"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
 export interface Execution {
   id: string;
   chatId: string;
-  status: "queued" | "running" | "waiting_option" | "cancelling" | "finished" | "failed" | "cancelled";
+  status: ExecutionStatus;
   error?: string | null;
   usage?: Record<string, unknown> | null;
+}
+
+export interface AnswerOptionResult {
+  option: {
+    id: string;
+    status: OptionStatus;
+  };
+  execution: Execution;
 }
