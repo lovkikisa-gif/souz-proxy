@@ -18,6 +18,10 @@ export interface ProviderKeyDto {
 }
 
 export interface ModelCapabilityDto {
+  provider?: string | null;
+  model?: string | null;
+  serverManagedKey?: boolean | null;
+  userManagedKey?: boolean | null;
   id?: string | null;
   label?: string | null;
 }
@@ -25,6 +29,7 @@ export interface ModelCapabilityDto {
 export interface ToolCapabilityDto {
   name?: string | null;
   label?: string | null;
+  enabled?: boolean | null;
 }
 
 export interface BootstrapDto {
@@ -33,12 +38,19 @@ export interface BootstrapDto {
     username?: string;
   };
   features?: Record<string, boolean> | null;
+  storage?: {
+    mode?: string | null;
+  } | null;
   storageMode?: string | null;
   capabilities?: {
     models?: ModelCapabilityDto[] | null;
     tools?: ToolCapabilityDto[] | null;
   } | null;
   settings?: SettingsDto | null;
+}
+
+export interface CompleteOnboardingResponseDto {
+  completed?: boolean;
 }
 
 export interface ServerManagedProviderDto {

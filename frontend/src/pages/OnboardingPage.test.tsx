@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderApp } from "../test/utils";
+import { createDeferred, renderApp } from "../test/utils";
 import {
   authUser,
   baseSettings,
@@ -66,6 +66,26 @@ import * as onboardingApi from "../api/onboarding";
 import * as bootstrapApi from "../api/bootstrap";
 import * as settingsApi from "../api/settings";
 import * as providerKeysApi from "../api/providerKeys";
+import * as toast from "../components/ui/Toast";
+
+const bootstrapState = {
+  user: authUser,
+  features: {},
+  storageMode: "memory",
+  capabilities: {
+    models: ["GigaChat-Max"],
+    modelAccess: [
+      {
+        provider: "gigachat",
+        model: "GigaChat-Max",
+        serverManagedKey: true,
+        userManagedKey: false,
+      },
+    ],
+    tools: [],
+  },
+  settings: baseSettings,
+};
 
 describe("OnboardingPage", () => {
   beforeEach(() => {
@@ -74,10 +94,10 @@ describe("OnboardingPage", () => {
     vi.mocked(onboardingApi.getOnboardingState).mockResolvedValue(
       onboardingWelcomeStateDto
     );
-    vi.mocked(onboardingApi.completeOnboarding).mockResolvedValue(null);
-    vi.mocked(bootstrapApi.getBootstrap).mockRejectedValue(
-      new Error("bootstrap unavailable")
-    );
+    vi.mocked(onboardingApi.completeOnboarding).mockResolvedValue({
+      completed: true,
+    });
+    vi.mocked(bootstrapApi.getBootstrap).mockResolvedValue(bootstrapState);
     vi.mocked(settingsApi.getSettings).mockResolvedValue(baseSettings);
     vi.mocked(providerKeysApi.getProviderKeys).mockResolvedValue([
       {
@@ -122,12 +142,17 @@ describe("OnboardingPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("completes onboarding and redirects to chats", async () => {
+  it("refreshes onboarding and bootstrap before redirecting to chats", async () => {
     const user = userEvent.setup();
+    const refreshedOnboarding = createDeferred<typeof onboardingCompletedStateDto>();
+    const refreshedBootstrap = createDeferred<typeof bootstrapState>();
 
     vi.mocked(onboardingApi.getOnboardingState)
       .mockResolvedValueOnce(onboardingWelcomeStateDto)
-      .mockResolvedValueOnce(onboardingCompletedStateDto);
+      .mockReturnValueOnce(refreshedOnboarding.promise);
+    vi.mocked(bootstrapApi.getBootstrap)
+      .mockResolvedValueOnce(bootstrapState)
+      .mockReturnValueOnce(refreshedBootstrap.promise);
 
     await renderApp("/app/onboarding");
 
@@ -154,8 +179,47 @@ describe("OnboardingPage", () => {
     });
 
     await waitFor(() => {
+      expect(onboardingApi.getOnboardingState).toHaveBeenCalledTimes(2);
+      expect(bootstrapApi.getBootstrap).toHaveBeenCalledTimes(2);
+    });
+
+    expect(window.location.pathname).toBe("/app/onboarding");
+
+    refreshedOnboarding.resolve(onboardingCompletedStateDto);
+    await Promise.resolve();
+    expect(window.location.pathname).toBe("/app/onboarding");
+
+    refreshedBootstrap.resolve(bootstrapState);
+
+    await waitFor(() => {
       expect(window.location.pathname).toBe("/app/chats");
     });
     expect(screen.getByText("Chats stub")).toBeInTheDocument();
+  });
+
+  it("stays on onboarding when the refreshed state still requires setup", async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(onboardingApi.getOnboardingState)
+      .mockResolvedValueOnce(onboardingWelcomeStateDto)
+      .mockResolvedValueOnce(onboardingWelcomeStateDto);
+
+    await renderApp("/app/onboarding");
+
+    await user.click(
+      await screen.findByRole("button", { name: /^continue$/i })
+    );
+    await user.click(screen.getByRole("button", { name: /^continue$/i }));
+    await user.click(screen.getByRole("button", { name: /finish setup/i }));
+
+    await waitFor(() => {
+      expect(onboardingApi.getOnboardingState).toHaveBeenCalledTimes(2);
+      expect(bootstrapApi.getBootstrap).toHaveBeenCalledTimes(2);
+    });
+
+    expect(window.location.pathname).toBe("/app/onboarding");
+    expect(toast.showToast).toHaveBeenCalledWith(
+      "Setup saved, but onboarding is still required."
+    );
   });
 });

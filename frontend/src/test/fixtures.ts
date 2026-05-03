@@ -63,5 +63,5 @@ export const onboardingCompletedStateDto = {
   ...onboardingReadyStateDto,
   required: false,
   completed: true,
-  currentStep: "preferences",
+  currentStep: "done",
 } satisfies OnboardingState;

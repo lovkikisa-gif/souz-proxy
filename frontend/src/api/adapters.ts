@@ -39,8 +39,23 @@ function normalizeStep(step: string | null | undefined): OnboardingStep {
   return "welcome";
 }
 
+function mapModelAccessCapabilities(
+  dtos: ModelCapabilityDto[] | null | undefined
+) {
+  return (dtos ?? [])
+    .map((dto) => ({
+      provider: dto.provider ?? "",
+      model: dto.model ?? dto.id ?? "",
+      serverManagedKey: dto.serverManagedKey ?? false,
+      userManagedKey: dto.userManagedKey ?? false,
+    }))
+    .filter((dto) => dto.model);
+}
+
 function mapModelCapabilities(dtos: ModelCapabilityDto[] | null | undefined) {
-  return unique((dtos ?? []).map((dto) => dto.id ?? ""));
+  return unique(
+    mapModelAccessCapabilities(dtos).map((dto) => dto.model)
+  );
 }
 
 function mapToolCapabilities(dtos: ToolCapabilityDto[] | null | undefined) {
@@ -137,15 +152,18 @@ export function mapOnboardingStateDto(
 export function mapBootstrapDto(
   dto: BootstrapDto | null | undefined
 ): Bootstrap {
+  const modelAccess = mapModelAccessCapabilities(dto?.capabilities?.models);
+
   return {
     user: {
       id: dto?.user?.id ?? "",
       username: dto?.user?.username ?? "",
     },
     features: dto?.features ?? {},
-    storageMode: dto?.storageMode ?? "unknown",
+    storageMode: dto?.storage?.mode ?? dto?.storageMode ?? "unknown",
     capabilities: {
       models: mapModelCapabilities(dto?.capabilities?.models),
+      modelAccess,
       tools: mapToolCapabilities(dto?.capabilities?.tools),
     },
     settings: mapSettingsDto(dto?.settings),

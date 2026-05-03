@@ -1,8 +1,12 @@
 import { apiGet, apiPost } from "./http";
 import { mapOnboardingStateDto } from "./adapters";
-import type { OnboardingStateDto } from "./dto";
+import type {
+  CompleteOnboardingResponseDto,
+  OnboardingStateDto,
+} from "./dto";
 import type {
   CompleteOnboardingRequest,
+  CompleteOnboardingResponse,
   OnboardingState,
 } from "../types/onboarding";
 
@@ -14,11 +18,15 @@ export async function getOnboardingState(): Promise<OnboardingState> {
 
 export async function completeOnboarding(
   payload: CompleteOnboardingRequest
-): Promise<OnboardingState | null> {
-  const response = await apiPost<OnboardingStateDto | undefined>(
+): Promise<CompleteOnboardingResponse | null> {
+  const response = await apiPost<CompleteOnboardingResponseDto | undefined>(
     "/v1/onboarding/complete",
     payload
   );
 
-  return response ? mapOnboardingStateDto(response) : null;
+  return response
+    ? {
+        completed: response.completed ?? false,
+      }
+    : null;
 }

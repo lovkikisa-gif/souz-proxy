@@ -6,16 +6,14 @@ describe("completeOnboarding", () => {
     vi.unstubAllGlobals();
   });
 
-  it("maps a backend onboarding state response when one is returned", async () => {
+  it("returns the backend completion response when one is returned", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
         json: vi.fn().mockResolvedValue({
-          required: false,
           completed: true,
-          currentStep: "done",
         }),
       })
     );
@@ -29,10 +27,8 @@ describe("completeOnboarding", () => {
         showToolEvents: true,
         enabledTools: [],
       })
-    ).resolves.toMatchObject({
-      required: false,
+    ).resolves.toEqual({
       completed: true,
-      currentStep: "done",
     });
   });
 

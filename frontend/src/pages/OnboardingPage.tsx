@@ -274,9 +274,11 @@ export function OnboardingPage() {
 
     setSavingCompletion(true);
     try {
-      const completedState = await completeOnboarding(form);
-      const state = completedState ?? (await refreshOnboarding());
-      await refreshBootstrap();
+      await completeOnboarding(form);
+      const [state] = await Promise.all([
+        refreshOnboarding(),
+        refreshBootstrap(),
+      ]);
 
       if (state && !state.required) {
         navigate("/chats", { replace: true });

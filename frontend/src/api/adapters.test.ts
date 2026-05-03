@@ -31,10 +31,23 @@ describe("API adapters", () => {
 
   it("normalizes object-based bootstrap capabilities to string ids", () => {
     const bootstrap = mapBootstrapDto({
+      storage: {
+        mode: "postgres",
+      },
       capabilities: {
         models: [
-          { id: "GigaChat-Max", label: "GigaChat Max" },
-          { id: "gpt-5-nano", label: "GPT-5 Nano" },
+          {
+            provider: "gigachat",
+            model: "GigaChat-Max",
+            serverManagedKey: true,
+            userManagedKey: false,
+          },
+          {
+            provider: "openai",
+            model: "gpt-5-nano",
+            serverManagedKey: false,
+            userManagedKey: true,
+          },
         ],
         tools: [
           { name: "web_search", label: "Web Search" },
@@ -47,7 +60,30 @@ describe("API adapters", () => {
       "GigaChat-Max",
       "gpt-5-nano",
     ]);
+    expect(bootstrap.capabilities.modelAccess).toEqual([
+      {
+        provider: "gigachat",
+        model: "GigaChat-Max",
+        serverManagedKey: true,
+        userManagedKey: false,
+      },
+      {
+        provider: "openai",
+        model: "gpt-5-nano",
+        serverManagedKey: false,
+        userManagedKey: true,
+      },
+    ]);
     expect(bootstrap.capabilities.tools).toEqual(["web_search", "shell"]);
+    expect(bootstrap.storageMode).toBe("postgres");
+  });
+
+  it("falls back to legacy storageMode when storage.mode is missing", () => {
+    const bootstrap = mapBootstrapDto({
+      storageMode: "legacy-file",
+    });
+
+    expect(bootstrap.storageMode).toBe("legacy-file");
   });
 
   it("normalizes settings payloads centrally", () => {

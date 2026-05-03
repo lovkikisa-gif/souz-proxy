@@ -17,6 +17,13 @@ export interface ProviderKey {
   updatedAt?: string | null;
 }
 
+export interface ModelAccessCapability {
+  provider: string;
+  model: string;
+  serverManagedKey: boolean;
+  userManagedKey: boolean;
+}
+
 export interface Bootstrap {
   user: {
     id: string;
@@ -26,6 +33,7 @@ export interface Bootstrap {
   storageMode: string;
   capabilities: {
     models: string[];
+    modelAccess: ModelAccessCapability[];
     tools: string[];
   };
   settings: Settings;

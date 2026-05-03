@@ -36,3 +36,7 @@ export interface CompleteOnboardingRequest {
   showToolEvents: boolean;
   enabledTools: string[];
 }
+
+export interface CompleteOnboardingResponse {
+  completed: boolean;
+}
