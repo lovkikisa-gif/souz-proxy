@@ -1,0 +1,10 @@
+.git
+.gradle
+.idea
+.vscode
+build
+bin
+deploy/.env
+deploy/deploy.env
+frontend/node_modules
+frontend/dist

@@ -49,6 +49,8 @@ out/
 
 # Environment Variables
 .env
+deploy/.env
+deploy/deploy.env
 
 # MacOS
 .DS_Store

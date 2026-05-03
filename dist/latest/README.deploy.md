@@ -1,0 +1,20 @@
+# Production Deploy
+
+```bash
+cp deploy/.env.example .env
+openssl rand -base64 48
+docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d
+docker compose --env-file .env -f deploy/docker-compose.prod.yml ps
+```
+
+Fill every required secret in `.env` before the first startup. The production compose file intentionally uses `${VAR:?error}` guards so the deployment fails fast when a secret is missing.
+
+For low-resource VPS targets, build and export images locally, then either upload `dist/` manually or use `./deploy/deploy-vm.sh` to build, upload, install Docker/Caddy if needed, and start the stack remotely without compiling anything on the VM. The deploy pipeline packages only the proxy app and backend stack; the public landing site is expected to be deployed separately.
+
+```bash
+cp deploy/deploy.env.example deploy/deploy.env
+cp deploy/.env.example deploy/.env
+./deploy/deploy-vm.sh
+```
+
+Do not rotate SOUZ_MASTER_KEY without a key migration plan. Existing user-managed provider keys may become undecryptable.

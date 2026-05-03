@@ -9,7 +9,7 @@ services:
     environment:
       PROXY_HOST: "0.0.0.0"
       PROXY_PORT: "8080"
-      PUBLIC_BASE_URL: "http://localhost:8080" # dev only; use HTTPS URL in production
+      PUBLIC_BASE_URL: "http://localhost:8080"
 
       BACKEND_URL: "http://souz-backend:8080"
       SOUZ_BACKEND_PROXY_TOKEN: "${SOUZ_BACKEND_PROXY_TOKEN}"
@@ -20,7 +20,7 @@ services:
       WELCOME_KEY_SECRET: "${WELCOME_KEY_SECRET}"
 
       COOKIE_NAME: "souz_session"
-      COOKIE_SECURE: "false" # dev only; set true in production behind HTTPS
+      COOKIE_SECURE: "false"
       SESSION_TTL_DAYS: "30"
       WS_ALLOWED_ORIGINS: "http://localhost:8080"
       ENV: "development"
