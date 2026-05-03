@@ -100,7 +100,7 @@ services:
       AITUNNEL_MODEL: "${AITUNNEL_MODEL:-}"
       AITUNNEL_EMBEDDINGS_MODEL: "${AITUNNEL_EMBEDDINGS_MODEL:-}"
       GIGA_KEY: "${GIGA_KEY:-}"
-      GIGA_LOG_LEVEL: "${GIGA_LOG_LEVEL:-}"
+      GIGA_LOG_LEVEL: "${GIGA_LOG_LEVEL:-INFO}"
     expose:
       - "8080"
     depends_on:

@@ -25,6 +25,7 @@ data class ProxyConfig(
     val backendRequestTimeout: Duration = Duration.ofSeconds(30)
 ) {
     val isProduction: Boolean = env.equals("production", ignoreCase = true)
+    val isTest: Boolean = env.equals("test", ignoreCase = true)
     val normalizedPublicOrigin: String = publicBaseUrl.toOrigin()
     val resolvedWsAllowedOrigins: Set<String> = if (wsAllowedOrigins.isEmpty()) {
         setOf(normalizedPublicOrigin)
@@ -44,11 +45,13 @@ data class ProxyConfig(
 
         publicBaseUrl.toOrigin()
         backendUrl.toBaseHttpUrl()
+        if (!isTest) {
+            require(backendProxyToken != "default-dev-proxy-token") {
+                "SOUZ_BACKEND_PROXY_TOKEN must not use the default dev token."
+            }
+        }
 
         if (isProduction) {
-            require(backendProxyToken != "default-dev-proxy-token") {
-                "SOUZ_BACKEND_PROXY_TOKEN must not use the default dev token in production."
-            }
             require(cookieSecure) { "COOKIE_SECURE must be true in production." }
             require(publicBaseUrl.startsWith("https://")) { "PUBLIC_BASE_URL must use HTTPS in production." }
             requireStrongSecret("SESSION_HASH_SECRET", sessionHashSecret)

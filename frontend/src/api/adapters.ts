@@ -1,7 +1,9 @@
 import type {
+  ExecutionDto,
   BootstrapDto,
   ModelCapabilityDto,
   OnboardingStateDto,
+  OptionDto,
   ProviderKeyDto,
   ServerManagedProviderDto,
   SettingsDto,
@@ -9,6 +11,11 @@ import type {
   UserManagedProviderDto,
 } from "./dto";
 import type { OnboardingState, OnboardingStep } from "../types/onboarding";
+import type {
+  AnswerOptionResult,
+  Execution,
+  OptionStatus,
+} from "../types/chat";
 import type { Bootstrap, ProviderKey, Settings } from "../types/settings";
 
 const DEFAULT_SETTINGS: Settings = {
@@ -88,6 +95,23 @@ export function mapProviderKeyDto(dto: ProviderKeyDto): ProviderKey {
 
 export function mapProviderKeysDto(dtos: ProviderKeyDto[]): ProviderKey[] {
   return dtos.map(mapProviderKeyDto);
+}
+
+export function mapExecutionDto(dto: ExecutionDto): Execution {
+  return {
+    id: dto.id,
+    chatId: dto.chatId,
+    status: (dto.status ?? "queued") as Execution["status"],
+    error: dto.errorMessage ?? null,
+    usage: dto.usage ?? null,
+  };
+}
+
+export function mapOptionDto(dto: OptionDto): AnswerOptionResult["option"] {
+  return {
+    id: dto.id,
+    status: (dto.status ?? "pending") as OptionStatus,
+  };
 }
 
 function mapServerManagedProvider(dto: ServerManagedProviderDto) {

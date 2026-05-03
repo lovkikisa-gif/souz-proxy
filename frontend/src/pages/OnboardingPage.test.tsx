@@ -107,7 +107,12 @@ describe("OnboardingPage", () => {
         updatedAt: null,
       },
     ]);
-    vi.mocked(providerKeysApi.setProviderKey).mockResolvedValue(undefined);
+    vi.mocked(providerKeysApi.setProviderKey).mockResolvedValue({
+      provider: "openai",
+      configured: true,
+      keyHint: "...1234",
+      updatedAt: "2026-05-03T18:03:00Z",
+    });
     vi.mocked(providerKeysApi.deleteProviderKey).mockResolvedValue(undefined);
   });
 

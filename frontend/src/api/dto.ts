@@ -17,6 +17,10 @@ export interface ProviderKeyDto {
   updatedAt?: string | null;
 }
 
+export interface PutProviderKeyResponseDto {
+  providerKey?: ProviderKeyDto | null;
+}
+
 export interface ModelCapabilityDto {
   provider?: string | null;
   model?: string | null;
@@ -51,6 +55,28 @@ export interface BootstrapDto {
 
 export interface CompleteOnboardingResponseDto {
   completed?: boolean;
+}
+
+export interface ExecutionDto {
+  id: string;
+  chatId: string;
+  status?: string | null;
+  errorMessage?: string | null;
+  usage?: Record<string, unknown> | null;
+}
+
+export interface CancelExecutionResponseDto {
+  execution?: ExecutionDto | null;
+}
+
+export interface OptionDto {
+  id: string;
+  status?: string | null;
+}
+
+export interface AnswerOptionResponseDto {
+  option?: OptionDto | null;
+  execution?: ExecutionDto | null;
 }
 
 export interface ServerManagedProviderDto {
