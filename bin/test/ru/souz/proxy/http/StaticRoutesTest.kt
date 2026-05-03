@@ -64,6 +64,30 @@ class StaticRoutesTest {
     }
 
     @Test
+    fun `onboarding route falls back to frontend index from public root`() = withStaticContent(
+        mapOf(
+            "public/index.html" to "<html><body>app-shell</body></html>",
+            "public-root/index.html" to "<html><body>root-shell</body></html>"
+        )
+    ) { staticContent ->
+        testApplication {
+            application {
+                routing {
+                    staticRoutes(
+                        publicDir = staticContent.publicDir.toFile(),
+                        publicRootDir = staticContent.publicRootDir.toFile()
+                    )
+                }
+            }
+
+            val response = client.get("/app/onboarding")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertTrue(response.bodyAsText().contains("app-shell"))
+        }
+    }
+
+    @Test
     fun `health routes are not captured by app fallback`() = withStaticContent(
         mapOf(
             "public/index.html" to "<html><body>app-shell</body></html>",

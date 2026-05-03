@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import type { ProviderKey } from "../../types/settings";
 import { getProviderKeys, setProviderKey, deleteProviderKey } from "../../api/providerKeys";
+import { useAuth } from "../../auth/useAuth";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { showToast } from "../ui/Toast";
 
 export function ProviderKeysPanel() {
+  const { refreshOnboarding } = useAuth();
   const [keys, setKeys] = useState<ProviderKey[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,12 +28,27 @@ export function ProviderKeysPanel() {
         Keys are stored securely and encrypted on the server. Full keys are never displayed.
       </p>
       {keys.length === 0 && <p style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>No provider keys configured.</p>}
-      {keys.map((k) => <ProviderKeyRow key={k.provider} providerKey={k} onUpdate={load} />)}
+      {keys.map((k) => (
+        <ProviderKeyRow
+          key={k.provider}
+          providerKey={k}
+          onUpdate={load}
+          onOnboardingUpdate={refreshOnboarding}
+        />
+      ))}
     </div>
   );
 }
 
-function ProviderKeyRow({ providerKey, onUpdate }: { providerKey: ProviderKey; onUpdate: () => void }) {
+function ProviderKeyRow({
+  providerKey,
+  onUpdate,
+  onOnboardingUpdate,
+}: {
+  providerKey: ProviderKey;
+  onUpdate: () => void;
+  onOnboardingUpdate: () => Promise<unknown>;
+}) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
@@ -43,6 +60,7 @@ function ProviderKeyRow({ providerKey, onUpdate }: { providerKey: ProviderKey; o
       await setProviderKey(providerKey.provider, value.trim());
       setValue("");
       setEditing(false);
+      await onOnboardingUpdate();
       showToast("Key saved", "success");
       onUpdate();
     } catch { showToast("Failed to save key"); }
@@ -53,6 +71,7 @@ function ProviderKeyRow({ providerKey, onUpdate }: { providerKey: ProviderKey; o
     setSaving(true);
     try {
       await deleteProviderKey(providerKey.provider);
+      await onOnboardingUpdate();
       showToast("Key removed", "success");
       onUpdate();
     } catch { showToast("Failed to remove key"); }

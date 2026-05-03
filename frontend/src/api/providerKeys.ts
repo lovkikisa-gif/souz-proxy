@@ -1,8 +1,12 @@
 import { apiGet, apiPut, apiDelete } from "./http";
+import { mapProviderKeysDto } from "./adapters";
+import type { ProviderKeyDto } from "./dto";
 import type { ProviderKey } from "../types/settings";
 
-export function getProviderKeys(): Promise<ProviderKey[]> {
-  return apiGet<ProviderKey[]>("/v1/me/provider-keys");
+export async function getProviderKeys(): Promise<ProviderKey[]> {
+  return mapProviderKeysDto(
+    await apiGet<ProviderKeyDto[]>("/v1/me/provider-keys")
+  );
 }
 
 export function setProviderKey(
