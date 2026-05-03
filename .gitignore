@@ -55,6 +55,9 @@ deploy/deploy.env
 # MacOS
 .DS_Store
 
+# Build artifacts
+bin/
+
 # Frontend
 frontend/node_modules/
 frontend/dist/

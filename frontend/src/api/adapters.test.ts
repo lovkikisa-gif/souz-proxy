@@ -29,6 +29,27 @@ describe("API adapters", () => {
     expect(bootstrap.settings.streamingMessages).toBe(true);
   });
 
+  it("normalizes object-based bootstrap capabilities to string ids", () => {
+    const bootstrap = mapBootstrapDto({
+      capabilities: {
+        models: [
+          { id: "GigaChat-Max", label: "GigaChat Max" },
+          { id: "gpt-5-nano", label: "GPT-5 Nano" },
+        ],
+        tools: [
+          { name: "web_search", label: "Web Search" },
+          { name: "shell", label: "Shell" },
+        ],
+      },
+    });
+
+    expect(bootstrap.capabilities.models).toEqual([
+      "GigaChat-Max",
+      "gpt-5-nano",
+    ]);
+    expect(bootstrap.capabilities.tools).toEqual(["web_search", "shell"]);
+  });
+
   it("normalizes settings payloads centrally", () => {
     const settings = mapSettingsDto({
       defaultModel: "GigaChat-Max",
@@ -89,5 +110,15 @@ describe("API adapters", () => {
       "GigaChat-Max",
       "gpt-5-nano",
     ]);
+  });
+
+  it("preserves the done onboarding step from the backend", () => {
+    const state = mapOnboardingStateDto({
+      required: false,
+      completed: true,
+      currentStep: "done",
+    });
+
+    expect(state.currentStep).toBe("done");
   });
 });

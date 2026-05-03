@@ -1,6 +1,6 @@
 import type { Settings } from "./settings";
 
-export type OnboardingStep = "welcome" | "provider" | "preferences";
+export type OnboardingStep = "welcome" | "provider" | "preferences" | "done";
 
 export interface ServerManagedProvider {
   provider: string;

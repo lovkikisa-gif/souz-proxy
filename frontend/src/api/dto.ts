@@ -17,6 +17,16 @@ export interface ProviderKeyDto {
   updatedAt?: string | null;
 }
 
+export interface ModelCapabilityDto {
+  id?: string | null;
+  label?: string | null;
+}
+
+export interface ToolCapabilityDto {
+  name?: string | null;
+  label?: string | null;
+}
+
 export interface BootstrapDto {
   user?: {
     id?: string;
@@ -25,8 +35,8 @@ export interface BootstrapDto {
   features?: Record<string, boolean> | null;
   storageMode?: string | null;
   capabilities?: {
-    models?: string[] | null;
-    tools?: string[] | null;
+    models?: ModelCapabilityDto[] | null;
+    tools?: ToolCapabilityDto[] | null;
   } | null;
   settings?: SettingsDto | null;
 }

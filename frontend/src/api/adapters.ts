@@ -1,9 +1,11 @@
 import type {
   BootstrapDto,
+  ModelCapabilityDto,
   OnboardingStateDto,
   ProviderKeyDto,
   ServerManagedProviderDto,
   SettingsDto,
+  ToolCapabilityDto,
   UserManagedProviderDto,
 } from "./dto";
 import type { OnboardingState, OnboardingStep } from "../types/onboarding";
@@ -26,11 +28,23 @@ function unique(values: string[]): string[] {
 }
 
 function normalizeStep(step: string | null | undefined): OnboardingStep {
-  if (step === "provider" || step === "preferences") {
+  if (
+    step === "provider" ||
+    step === "preferences" ||
+    step === "done"
+  ) {
     return step;
   }
 
   return "welcome";
+}
+
+function mapModelCapabilities(dtos: ModelCapabilityDto[] | null | undefined) {
+  return unique((dtos ?? []).map((dto) => dto.id ?? ""));
+}
+
+function mapToolCapabilities(dtos: ToolCapabilityDto[] | null | undefined) {
+  return unique((dtos ?? []).map((dto) => dto.name ?? ""));
 }
 
 export function mapSettingsDto(dto: SettingsDto | null | undefined): Settings {
@@ -131,8 +145,8 @@ export function mapBootstrapDto(
     features: dto?.features ?? {},
     storageMode: dto?.storageMode ?? "unknown",
     capabilities: {
-      models: dto?.capabilities?.models ?? [],
-      tools: dto?.capabilities?.tools ?? [],
+      models: mapModelCapabilities(dto?.capabilities?.models),
+      tools: mapToolCapabilities(dto?.capabilities?.tools),
     },
     settings: mapSettingsDto(dto?.settings),
   };

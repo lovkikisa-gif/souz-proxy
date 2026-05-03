@@ -12,8 +12,13 @@ export async function getOnboardingState(): Promise<OnboardingState> {
   );
 }
 
-export function completeOnboarding(
+export async function completeOnboarding(
   payload: CompleteOnboardingRequest
-): Promise<void> {
-  return apiPost<void>("/v1/onboarding/complete", payload);
+): Promise<OnboardingState | null> {
+  const response = await apiPost<OnboardingStateDto | undefined>(
+    "/v1/onboarding/complete",
+    payload
+  );
+
+  return response ? mapOnboardingStateDto(response) : null;
 }

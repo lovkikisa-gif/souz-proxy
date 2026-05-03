@@ -6,7 +6,6 @@ import {
   authUser,
   baseSettings,
   onboardingCompletedStateDto,
-  onboardingReadyStateDto,
   onboardingWelcomeStateDto,
 } from "../test/fixtures";
 
@@ -75,7 +74,7 @@ describe("OnboardingPage", () => {
     vi.mocked(onboardingApi.getOnboardingState).mockResolvedValue(
       onboardingWelcomeStateDto
     );
-    vi.mocked(onboardingApi.completeOnboarding).mockResolvedValue(undefined);
+    vi.mocked(onboardingApi.completeOnboarding).mockResolvedValue(null);
     vi.mocked(bootstrapApi.getBootstrap).mockRejectedValue(
       new Error("bootstrap unavailable")
     );

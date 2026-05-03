@@ -149,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw e;
       }
     },
-    [loadBootstrap]
+    [hydrateAuthenticatedState]
   );
 
   const verifyWelcomeKey = useCallback(async (welcomeKey: string) => {
@@ -188,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw e;
       }
     },
-    [loadBootstrap]
+    [hydrateAuthenticatedState]
   );
 
   const logoutFn = useCallback(async () => {

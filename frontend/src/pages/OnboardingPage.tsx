@@ -11,14 +11,22 @@ import { showToast } from "../components/ui/Toast";
 import type { CompleteOnboardingRequest, OnboardingStep } from "../types/onboarding";
 import type { ProviderKey, Settings } from "../types/settings";
 
-const STEP_ORDER: OnboardingStep[] = ["welcome", "provider", "preferences"];
+const STEP_ORDER = ["welcome", "provider", "preferences"] as const;
 
 function unique(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
 function stepToIndex(step: OnboardingStep): number {
-  return STEP_ORDER.indexOf(step);
+  switch (step) {
+    case "provider":
+      return 1;
+    case "preferences":
+    case "done":
+      return 2;
+    default:
+      return 0;
+  }
 }
 
 function createCompletionPayload(
@@ -266,8 +274,8 @@ export function OnboardingPage() {
 
     setSavingCompletion(true);
     try {
-      await completeOnboarding(form);
-      const state = await refreshOnboarding();
+      const completedState = await completeOnboarding(form);
+      const state = completedState ?? (await refreshOnboarding());
       await refreshBootstrap();
 
       if (state && !state.required) {
