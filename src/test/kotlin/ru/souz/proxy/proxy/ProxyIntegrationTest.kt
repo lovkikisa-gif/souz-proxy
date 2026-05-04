@@ -132,6 +132,64 @@ class ProxyIntegrationTest {
     }
 
     @Test
+    fun `telegram bot put request is proxied with same path body and trusted headers`() = withBackendServer { backend ->
+        testApplication {
+            application {
+                proxyModule(
+                    config = testConfig(backend.baseUrl),
+                    authService = BackendAuthService(sessionLookup = { "proxy-user-123" })
+                )
+            }
+
+            val payload = """{"token":"123456:ABCDEF"}"""
+            val response = createJsonClient().put("/v1/chats/chat-42/telegram-bot") {
+                cookie("souz_session", "valid-session")
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer attacker")
+                header("X-Forwarded-For", "1.2.3.4")
+                header("X-User-Id", "attacker")
+                header("X-Souz-Proxy-Auth", "attacker-token")
+                setBody(payload)
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+
+            val echoed = response.body<BackendEchoResponse>()
+            assertEquals("PUT", echoed.method)
+            assertEquals("/v1/chats/chat-42/telegram-bot", echoed.path)
+            assertEquals(payload, echoed.body)
+            assertEquals("proxy-user-123", echoed.headers["X-User-Id"])
+            assertEquals("proxy-token-0123456789abcdef0123456789abcdef", echoed.headers["X-Souz-Proxy-Auth"])
+            assertEquals(null, echoed.headers[HttpHeaders.Authorization])
+            assertEquals(null, echoed.headers["X-Forwarded-For"])
+            assertEquals(null, echoed.headers[HttpHeaders.Cookie])
+        }
+    }
+
+    @Test
+    fun `telegram bot delete request is proxied with same path`() = withBackendServer { backend ->
+        testApplication {
+            application {
+                proxyModule(
+                    config = testConfig(backend.baseUrl),
+                    authService = BackendAuthService(sessionLookup = { "proxy-user-123" })
+                )
+            }
+
+            val response = createJsonClient().delete("/v1/chats/chat-42/telegram-bot") {
+                cookie("souz_session", "valid-session")
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+
+            val echoed = response.body<BackendEchoResponse>()
+            assertEquals("DELETE", echoed.method)
+            assertEquals("/v1/chats/chat-42/telegram-bot", echoed.path)
+            assertEquals("", echoed.body)
+        }
+    }
+
+    @Test
     fun `websocket requires auth`() = withBackendServer { backend ->
         testApplication {
             application {

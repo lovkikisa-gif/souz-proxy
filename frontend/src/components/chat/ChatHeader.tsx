@@ -2,6 +2,9 @@ import { useState } from "react";
 import type { Chat } from "../../types/chat";
 import { updateChatTitle, archiveChat, unarchiveChat } from "../../api/chats";
 import type { Execution } from "../../types/chat";
+import { TelegramBotSettings } from "./TelegramBotSettings";
+import { Button } from "../ui/Button";
+import { Modal } from "../ui/Modal";
 
 interface ChatHeaderProps {
   chat: Chat | null;
@@ -24,6 +27,7 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState("");
+  const [telegramOpen, setTelegramOpen] = useState(false);
 
   const handleRename = async () => {
     if (!chat || !title.trim()) {
@@ -170,6 +174,16 @@ export function ChatHeader({
         )}
 
         {chat && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setTelegramOpen(true)}
+          >
+            Telegram
+          </Button>
+        )}
+
+        {chat && (
           <button
             onClick={handleArchive}
             style={{
@@ -185,6 +199,12 @@ export function ChatHeader({
           </button>
         )}
       </div>
+
+      {chat && (
+        <Modal open={telegramOpen} onClose={() => setTelegramOpen(false)}>
+          <TelegramBotSettings key={chat.id} chatId={chat.id} />
+        </Modal>
+      )}
     </div>
   );
 }
