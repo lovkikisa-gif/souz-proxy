@@ -92,11 +92,13 @@ describe("backend v1 response contracts", () => {
         status: 200,
         json: vi.fn().mockResolvedValue({
           telegramBot: {
+            chatId: "chat-1",
             enabled: true,
+            botUsername: "souz_helper_bot",
+            botFirstName: "Souz Helper",
             createdAt: "2026-05-04T10:00:00Z",
             updatedAt: "2026-05-04T10:00:00Z",
-            lastError: null,
-            lastErrorAt: null,
+            linked: false,
           },
         }),
       })
@@ -105,11 +107,17 @@ describe("backend v1 response contracts", () => {
         status: 200,
         json: vi.fn().mockResolvedValue({
           telegramBot: {
+            chatId: "chat-1",
             enabled: true,
+            botUsername: "souz_helper_bot",
+            botFirstName: "Souz Helper",
             createdAt: "2026-05-04T10:00:00Z",
             updatedAt: "2026-05-04T10:05:00Z",
-            lastError: null,
-            lastErrorAt: null,
+            linked: true,
+            telegramUsername: "telegram_alice",
+            telegramFirstName: "Alice",
+            telegramLastName: "Walker",
+            linkedAt: "2026-05-04T10:05:00Z",
           },
         }),
       })
@@ -123,21 +131,29 @@ describe("backend v1 response contracts", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(getChatTelegramBot("chat-1")).resolves.toEqual({
+      chatId: "chat-1",
       enabled: true,
+      botUsername: "souz_helper_bot",
+      botFirstName: "Souz Helper",
       createdAt: "2026-05-04T10:00:00Z",
       updatedAt: "2026-05-04T10:00:00Z",
-      lastError: null,
-      lastErrorAt: null,
+      linked: false,
     });
 
     await expect(
       upsertChatTelegramBot("chat-1", "123456:ABCDEF")
     ).resolves.toEqual({
+      chatId: "chat-1",
       enabled: true,
+      botUsername: "souz_helper_bot",
+      botFirstName: "Souz Helper",
       createdAt: "2026-05-04T10:00:00Z",
       updatedAt: "2026-05-04T10:05:00Z",
-      lastError: null,
-      lastErrorAt: null,
+      linked: true,
+      telegramUsername: "telegram_alice",
+      telegramFirstName: "Alice",
+      telegramLastName: "Walker",
+      linkedAt: "2026-05-04T10:05:00Z",
     });
 
     await expect(deleteChatTelegramBot("chat-1")).resolves.toBeUndefined();
@@ -154,7 +170,7 @@ describe("backend v1 response contracts", () => {
       "/v1/chats/chat-1/telegram-bot",
       expect.objectContaining({
         method: "PUT",
-        body: JSON.stringify({ token: "123456:ABCDEF" }),
+        body: JSON.stringify({ botToken: "123456:ABCDEF", enabled: true }),
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(

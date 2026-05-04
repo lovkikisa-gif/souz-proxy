@@ -48,6 +48,7 @@ class DeploymentArtifactsTest {
         assertTrue(!prodCompose.contains("internal: true"))
         assertTrue(prodCompose.contains("\${SOUZ_BACKEND_PROXY_TOKEN:?"))
         assertTrue(prodCompose.contains("\${SOUZ_MASTER_KEY:?"))
+        assertTrue(prodCompose.contains("\${TELEGRAM_TOKEN_ENCRYPTION_KEY:?"))
         assertTrue(prodCompose.contains("\${SESSION_HASH_SECRET:?"))
         assertTrue(prodCompose.contains("\${WELCOME_KEY_SECRET:?"))
         assertTrue(prodCompose.contains("\${PROXY_DB_PASSWORD:?"))
@@ -62,6 +63,7 @@ class DeploymentArtifactsTest {
     @Test
     fun `deploy helpers document bundle export and production startup`() {
         assertFileContains("deploy/.env.example", "SOUZ_MASTER_KEY=replace_me_long_random_value")
+        assertFileContains("deploy/.env.example", "TELEGRAM_TOKEN_ENCRYPTION_KEY=replace_me_long_random_value")
         assertFileContains("deploy/.env.example", "# COOKIE_NAME=souz_session")
         assertFileContains("deploy/.env.example", "# SOUZ_BACKEND_DB_SCHEMA=public")
         assertFileContains("deploy/.env.example", "# OPENAI_API_KEY=")
@@ -70,6 +72,7 @@ class DeploymentArtifactsTest {
         assertFileContains("deploy/README.md", "docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d")
         assertFileContains("deploy/README.md", "./deploy/deploy-vm.sh")
         assertFileContains("deploy/README.md", "Do not rotate SOUZ_MASTER_KEY without a key migration plan.")
+        assertFileContains("deploy/README.md", "TELEGRAM_TOKEN_ENCRYPTION_KEY")
         assertFileContains("deploy/build-images.sh", "docker build")
         assertFileContains("deploy/export-images.sh", "load-and-run.sh")
         assertFileContains("deploy/smoke-test.sh", "Check backend health from proxy container")
@@ -83,6 +86,9 @@ class DeploymentArtifactsTest {
         assertFileContains("deploy/deploy.env.example", "DEPLOY_HOST=")
         assertFileContains("deploy/deploy.env.example", "REMOTE_APP_DIR=/opt/souz")
         assertFileContains("deploy/deploy.env.example", "BUILD_IMAGES_LOCALLY=true")
+        assertFileContains("deploy/deploy.env.example", "TELEGRAM_TOKEN_ENCRYPTION_KEY=replace_me_long_random_value")
+        assertFileContains("deploy/deploy-vm.sh", "require_env TELEGRAM_TOKEN_ENCRYPTION_KEY")
+        assertFileContains("deploy/deploy-vm.sh", "append_env_line TELEGRAM_TOKEN_ENCRYPTION_KEY")
         assertFileContains("deploy/deploy-vm.sh", "build-images.sh")
         assertFileContains("deploy/deploy-vm.sh", "export-images.sh")
         assertFileContains("deploy/deploy-vm.sh", "scp")

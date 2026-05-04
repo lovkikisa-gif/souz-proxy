@@ -3,11 +3,17 @@ import type { Chat } from "../types/chat";
 import { requireFieldResponse, unwrapItemsResponse } from "./responses";
 
 export type TelegramBotBindingDto = {
+  chatId: string;
   enabled: boolean;
+  botUsername?: string;
+  botFirstName?: string;
   createdAt: string;
   updatedAt: string;
-  lastError?: string | null;
-  lastErrorAt?: string | null;
+  linked: boolean;
+  telegramUsername?: string;
+  telegramFirstName?: string;
+  telegramLastName?: string;
+  linkedAt?: string;
 };
 
 export async function getChats(): Promise<Chat[]> {
@@ -50,12 +56,13 @@ export async function getChatTelegramBot(
 
 export async function upsertChatTelegramBot(
   chatId: string,
-  token: string
+  botToken: string,
+  enabled = true
 ): Promise<TelegramBotBindingDto> {
   return requireFieldResponse(
     await apiPut<{ telegramBot?: TelegramBotBindingDto | null }>(
       `/v1/chats/${chatId}/telegram-bot`,
-      { token }
+      { botToken, enabled }
     ),
     "telegramBot",
     `/v1/chats/${chatId}/telegram-bot`

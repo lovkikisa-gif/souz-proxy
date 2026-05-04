@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   deleteChatTelegramBot,
   getChatTelegramBot,
@@ -8,87 +8,241 @@ import {
 import { ApiError } from "../../types/api";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
-import { Input } from "../ui/Input";
-import { showToast } from "../ui/Toast";
 
-const lastErrorLabels: Record<string, string> = {
-  telegram_unauthorized: "Telegram отклонил token. Привязка отключена.",
-  telegram_conflict_webhook_enabled:
-    "У бота включен webhook. Long polling сейчас недоступен.",
-  telegram_rate_limited: "Telegram временно ограничил запросы.",
-  telegram_network_error: "Ошибка сети при обращении к Telegram.",
-  telegram_unknown_error: "Неизвестная ошибка Telegram-интеграции.",
-};
+const POLL_INTERVAL_MS = 4000;
+const GENERIC_UPDATE_ERROR =
+  "Could not update Telegram bot settings. Try again.";
+const GENERIC_CHECK_ERROR =
+  "Could not refresh Telegram bot status. Try again.";
+const GENERIC_DELETE_ERROR =
+  "Could not disconnect Telegram bot. Try again.";
+const INVALID_TOKEN_ERROR =
+  "Telegram rejected this token. Check that you copied it from @BotFather.";
+
+function containsTelegramToken(value: string): boolean {
+  return /\b\d{5,}:[^\s]+\b/.test(value);
+}
+
+function getSafeApiMessage(error: ApiError): string | null {
+  const message = error.message?.trim();
+  if (!message || containsTelegramToken(message)) {
+    return null;
+  }
+  return message;
+}
 
 function getSaveErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    switch (error.code) {
-      case "invalid_telegram_bot_token":
-        return "Неверный token Telegram-бота.";
-      case "telegram_bot_already_bound":
-        return "Этот Telegram-бот уже привязан к другому чату.";
-      case "chat_not_found":
-        return "Чат не найден или недоступен.";
-      default:
-        return "Не удалось сохранить Telegram-бота.";
+    if (error.code === "invalid_telegram_bot_token") {
+      return INVALID_TOKEN_ERROR;
     }
+
+    return getSafeApiMessage(error) ?? GENERIC_UPDATE_ERROR;
   }
 
-  return "Не удалось сохранить Telegram-бота.";
+  return GENERIC_UPDATE_ERROR;
 }
 
 function getDeleteErrorMessage(error: unknown): string {
-  if (error instanceof ApiError && error.code === "chat_not_found") {
-    return "Чат не найден или недоступен.";
+  if (error instanceof ApiError) {
+    return getSafeApiMessage(error) ?? GENERIC_DELETE_ERROR;
   }
 
-  return "Не удалось удалить Telegram-бота.";
+  return GENERIC_DELETE_ERROR;
 }
 
-function getBindingStatus(binding: TelegramBotBindingDto | null): {
+function getLoadErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    return getSafeApiMessage(error) ?? GENERIC_CHECK_ERROR;
+  }
+
+  return GENERIC_CHECK_ERROR;
+}
+
+function formatBotName(binding: TelegramBotBindingDto): string {
+  if (binding.botUsername?.trim()) {
+    return ensureHandle(binding.botUsername);
+  }
+
+  return binding.botFirstName?.trim() || "Telegram bot";
+}
+
+function formatTelegramAccount(binding: TelegramBotBindingDto): string {
+  if (binding.telegramUsername?.trim()) {
+    return ensureHandle(binding.telegramUsername);
+  }
+
+  const fullName = [binding.telegramFirstName, binding.telegramLastName]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(" ");
+
+  return fullName || "Telegram user";
+}
+
+function ensureHandle(value: string): string {
+  return value.startsWith("@") ? value : `@${value}`;
+}
+
+function getTelegramBotUrl(botUsername?: string): string | null {
+  const username = botUsername?.replace(/^@/, "").trim();
+  if (!username) {
+    return null;
+  }
+
+  return `https://t.me/${username}`;
+}
+
+function formatLinkedAt(value?: string): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function StatusBadge({
+  label,
+  tone,
+}: {
   label: string;
-  tone: string;
-} {
-  if (!binding) {
-    return {
-      label: "Not connected",
-      tone: "var(--color-text-muted)",
-    };
-  }
+  tone: "pending" | "connected";
+}) {
+  const palette =
+    tone === "connected"
+      ? {
+          color: "var(--color-success)",
+          background: "rgba(74, 222, 128, 0.14)",
+          border: "rgba(74, 222, 128, 0.28)",
+        }
+      : {
+          color: "var(--color-warning)",
+          background: "rgba(251, 191, 36, 0.14)",
+          border: "rgba(251, 191, 36, 0.28)",
+        };
 
-  if (!binding.enabled || binding.lastError) {
-    return {
-      label: "Telegram bot disabled",
-      tone: "var(--color-warning)",
-    };
-  }
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "6px 10px",
+        borderRadius: 999,
+        border: `1px solid ${palette.border}`,
+        background: palette.background,
+        color: palette.color,
+        fontSize: "0.8125rem",
+        fontWeight: 600,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
 
-  return {
-    label: "Telegram bot connected",
-    tone: "var(--color-success)",
-  };
+function DetailsRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div style={{ display: "grid", gap: 4 }}>
+      <span
+        style={{
+          fontSize: "0.75rem",
+          color: "var(--color-text-muted)",
+          textTransform: "uppercase",
+          letterSpacing: "0.04em",
+        }}
+      >
+        {label}
+      </span>
+      <span style={{ fontSize: "0.9375rem", fontWeight: 600 }}>{value}</span>
+    </div>
+  );
+}
+
+function ErrorMessage({ message }: { message: string }) {
+  return (
+    <div
+      role="alert"
+      style={{
+        borderRadius: "var(--radius-md)",
+        border: "1px solid rgba(248, 113, 113, 0.3)",
+        background: "rgba(248, 113, 113, 0.12)",
+        color: "var(--color-error)",
+        padding: "12px 14px",
+        fontSize: "0.875rem",
+        lineHeight: 1.5,
+      }}
+    >
+      {message}
+    </div>
+  );
 }
 
 export function TelegramBotSettings({ chatId }: { chatId: string }) {
   const [binding, setBinding] = useState<TelegramBotBindingDto | null>(null);
   const [token, setToken] = useState("");
+  const [tokenVisible, setTokenVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const [removing, setRemoving] = useState(false);
+
+  const refreshBinding = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      if (background) {
+        setCheckingStatus(true);
+      }
+
+      try {
+        const telegramBot = await getChatTelegramBot(chatId);
+        setBinding(telegramBot ? { ...telegramBot } : null);
+        setError(null);
+        return telegramBot;
+      } catch (loadError) {
+        setError(getLoadErrorMessage(loadError));
+        return null;
+      } finally {
+        if (background) {
+          setCheckingStatus(false);
+        }
+      }
+    },
+    [chatId]
+  );
 
   useEffect(() => {
     let cancelled = false;
 
+    setLoading(true);
+    setBinding(null);
+    setToken("");
+    setTokenVisible(false);
+    setError(null);
+
     getChatTelegramBot(chatId)
       .then((telegramBot) => {
         if (!cancelled) {
-          setBinding(telegramBot);
+          setBinding(telegramBot ? { ...telegramBot } : null);
         }
       })
-      .catch(() => {
+      .catch((loadError) => {
         if (!cancelled) {
-          showToast("Не удалось загрузить Telegram-бота.");
+          setError(getLoadErrorMessage(loadError));
         }
       })
       .finally(() => {
@@ -102,15 +256,38 @@ export function TelegramBotSettings({ chatId }: { chatId: string }) {
     };
   }, [chatId]);
 
-  const status = getBindingStatus(binding);
-  const submitLabel = binding ? "Update bot" : "Save bot";
-  const lastErrorText = binding?.lastError
-    ? lastErrorLabels[binding.lastError] ?? "Неизвестная ошибка Telegram-интеграции."
-    : null;
+  useEffect(() => {
+    if (!binding || !binding.enabled || binding.linked) {
+      return;
+    }
 
-  const handleSave = async () => {
+    const timeoutId = window.setTimeout(() => {
+      void refreshBinding({ background: true });
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [binding, refreshBinding]);
+
+  const activeBinding = binding?.enabled === false ? null : binding;
+  const telegramBotUrl = getTelegramBotUrl(activeBinding?.botUsername);
+  const linkedAt = formatLinkedAt(activeBinding?.linkedAt);
+  const connectDisabled =
+    loading || saving || checkingStatus || removing || !token.trim();
+
+  const botLabel = useMemo(
+    () => (activeBinding ? formatBotName(activeBinding) : null),
+    [activeBinding]
+  );
+  const telegramAccountLabel = useMemo(
+    () =>
+      activeBinding?.linked ? formatTelegramAccount(activeBinding) : null,
+    [activeBinding]
+  );
+
+  const handleConnect = async () => {
     const trimmedToken = token.trim();
-
     if (!trimmedToken) {
       return;
     }
@@ -119,10 +296,11 @@ export function TelegramBotSettings({ chatId }: { chatId: string }) {
     setError(null);
 
     try {
-      const telegramBot = await upsertChatTelegramBot(chatId, trimmedToken);
+      const telegramBot = await upsertChatTelegramBot(chatId, trimmedToken, true);
       setBinding(telegramBot);
       setToken("");
-      showToast("Telegram bot saved", "success");
+      setTokenVisible(false);
+      await refreshBinding({ background: true });
     } catch (saveError) {
       setError(getSaveErrorMessage(saveError));
     } finally {
@@ -130,7 +308,12 @@ export function TelegramBotSettings({ chatId }: { chatId: string }) {
     }
   };
 
-  const handleRemove = async () => {
+  const handleCheckStatus = async () => {
+    setError(null);
+    await refreshBinding({ background: true });
+  };
+
+  const handleDisconnect = async () => {
     setRemoving(true);
     setError(null);
 
@@ -138,7 +321,7 @@ export function TelegramBotSettings({ chatId }: { chatId: string }) {
       await deleteChatTelegramBot(chatId);
       setBinding(null);
       setToken("");
-      showToast("Telegram bot removed", "success");
+      setTokenVisible(false);
     } catch (deleteError) {
       setError(getDeleteErrorMessage(deleteError));
     } finally {
@@ -148,26 +331,25 @@ export function TelegramBotSettings({ chatId }: { chatId: string }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div>
-          <h3 style={{ fontSize: "1rem", fontWeight: 600 }}>Telegram bot</h3>
-          <p
-            style={{
-              marginTop: 8,
-              color: "var(--color-text-secondary)",
-              fontSize: "0.875rem",
-              lineHeight: 1.5,
-            }}
-          >
-            Вставьте token Telegram-бота. Все текстовые сообщения,
-            отправленные этому боту, будут попадать в этот Souz-чат как
-            сообщения пользователя.
-          </p>
-        </div>
+      <div>
+        <h3 style={{ fontSize: "1rem", fontWeight: 600 }}>Telegram bot</h3>
+        <p
+          style={{
+            marginTop: 8,
+            color: "var(--color-text-secondary)",
+            fontSize: "0.875rem",
+            lineHeight: 1.5,
+          }}
+        >
+          Подключите Telegram-бота, чтобы писать агенту из Telegram.
+        </p>
+      </div>
 
+      {error && <ErrorMessage message={error} />}
+
+      {loading ? (
         <Card
           style={{
-            padding: "16px",
             display: "flex",
             flexDirection: "column",
             gap: 8,
@@ -179,66 +361,228 @@ export function TelegramBotSettings({ chatId }: { chatId: string }) {
               color: "var(--color-text-secondary)",
             }}
           >
-            Status
+            Loading…
           </span>
-          <strong style={{ color: status.tone }}>
-            {loading ? "Loading…" : status.label}
-          </strong>
-          {!loading && lastErrorText && (
+        </Card>
+      ) : null}
+
+      {!loading && !activeBinding ? (
+        <Card
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label
+              htmlFor="telegram-bot-token"
+              style={{
+                fontSize: "0.8125rem",
+                fontWeight: 500,
+                color: "var(--color-text-secondary)",
+              }}
+            >
+              Bot token
+            </label>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "stretch",
+                gap: 8,
+              }}
+            >
+              <input
+                id="telegram-bot-token"
+                type={tokenVisible ? "text" : "password"}
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                autoComplete="new-password"
+                placeholder="123456789:AA..."
+                spellCheck={false}
+                disabled={loading || saving || checkingStatus || removing}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: "10px 14px",
+                  fontSize: "0.875rem",
+                  fontFamily: "var(--font-sans)",
+                  background: "var(--color-bg-primary)",
+                  color: "var(--color-text-primary)",
+                  border: `1px solid ${error ? "var(--color-error)" : "var(--color-border)"}`,
+                  borderRadius: "var(--radius-md)",
+                  outline: "none",
+                }}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setTokenVisible((current) => !current)}
+                disabled={loading || saving || checkingStatus || removing}
+              >
+                {tokenVisible ? "Hide" : "Show"}
+              </Button>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
             <span
               style={{
                 fontSize: "0.8125rem",
                 color: "var(--color-text-secondary)",
-                lineHeight: 1.5,
               }}
             >
-              {lastErrorText}
+              Token можно получить у @BotFather.
             </span>
+            <Button
+              onClick={handleConnect}
+              disabled={connectDisabled}
+              loading={saving}
+            >
+              {saving ? "Connecting…" : "Connect bot"}
+            </Button>
+          </div>
+        </Card>
+      ) : null}
+
+      {!loading && activeBinding ? (
+        <Card
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <StatusBadge
+              label={activeBinding.linked ? "Connected" : "Waiting for Telegram"}
+              tone={activeBinding.linked ? "connected" : "pending"}
+            />
+            {botLabel ? <DetailsRow label="Bot" value={botLabel} /> : null}
+          </div>
+
+          {!activeBinding.linked ? (
+            <>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "0.9375rem",
+                  fontWeight: 600,
+                  lineHeight: 1.5,
+                }}
+              >
+                Напишите любое сообщение вашему боту в Telegram.
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  color: "var(--color-text-secondary)",
+                  fontSize: "0.875rem",
+                  lineHeight: 1.6,
+                }}
+              >
+                Первый Telegram-аккаунт, который напишет этому боту, будет
+                привязан к этому чату Souz. После этого сообщения от других
+                аккаунтов будут игнорироваться.
+              </p>
+              {telegramBotUrl ? (
+                <a
+                  href={telegramBotUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    color: "var(--color-accent)",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                  }}
+                >
+                  Open Telegram bot
+                </a>
+              ) : null}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleCheckStatus}
+                  disabled={saving || removing}
+                  loading={checkingStatus}
+                >
+                  {checkingStatus ? "Checking status…" : "Check status"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  onClick={handleDisconnect}
+                  disabled={saving || checkingStatus}
+                  loading={removing}
+                >
+                  {removing ? "Disconnecting…" : "Disconnect"}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              {telegramAccountLabel ? (
+                <DetailsRow
+                  label="Linked Telegram account"
+                  value={telegramAccountLabel}
+                />
+              ) : null}
+              {linkedAt ? (
+                <p
+                  style={{
+                    margin: 0,
+                    color: "var(--color-text-secondary)",
+                    fontSize: "0.8125rem",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Linked on {linkedAt}
+                </p>
+              ) : null}
+              <p
+                style={{
+                  margin: 0,
+                  color: "var(--color-text-secondary)",
+                  fontSize: "0.875rem",
+                  lineHeight: 1.6,
+                }}
+              >
+                Теперь сообщения из этого Telegram-аккаунта будут отправляться
+                агенту в этот Souz chat.
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Button
+                  type="button"
+                  variant="danger"
+                  onClick={handleDisconnect}
+                  disabled={saving || checkingStatus}
+                  loading={removing}
+                >
+                  {removing ? "Disconnecting…" : "Disconnect"}
+                </Button>
+              </div>
+            </>
           )}
         </Card>
-      </div>
-
-      <Input
-        type="password"
-        label="Token"
-        value={token}
-        onChange={(event) => setToken(event.target.value)}
-        placeholder="123456:ABCDEF"
-        autoComplete="new-password"
-        spellCheck={false}
-        disabled={loading || saving || removing}
-        error={error ?? undefined}
-      />
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Button
-            onClick={handleSave}
-            disabled={!token.trim() || loading || saving || removing}
-            loading={saving}
-          >
-            {saving ? "Saving…" : submitLabel}
-          </Button>
-          {binding && (
-            <Button
-              variant="danger"
-              onClick={handleRemove}
-              disabled={loading || saving || removing}
-              loading={removing}
-            >
-              {removing ? "Removing…" : "Remove bot"}
-            </Button>
-          )}
-        </div>
-      </div>
+      ) : null}
     </div>
   );
 }
