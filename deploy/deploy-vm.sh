@@ -25,6 +25,7 @@ require_env DOMAIN
 require_env PUBLIC_BASE_URL
 require_env SOUZ_BACKEND_PROXY_TOKEN
 require_env SOUZ_MASTER_KEY
+require_env TELEGRAM_TOKEN_ENCRYPTION_KEY
 require_env PROXY_DB_PASSWORD
 require_env BACKEND_DB_PASSWORD
 require_env SESSION_HASH_SECRET
@@ -85,6 +86,7 @@ render_app_env() {
     append_env_line SOUZ_VERSION
     append_env_line SOUZ_BACKEND_PROXY_TOKEN
     append_env_line SOUZ_MASTER_KEY
+    append_env_line TELEGRAM_TOKEN_ENCRYPTION_KEY
     append_env_line PROXY_DB_PASSWORD
     append_env_line BACKEND_DB_PASSWORD
     append_env_line SESSION_HASH_SECRET

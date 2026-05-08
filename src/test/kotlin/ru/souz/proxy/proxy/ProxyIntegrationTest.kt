@@ -1,5 +1,8 @@
 package ru.souz.proxy.proxy
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.websocket.WebSockets as ClientWebSockets
@@ -25,9 +28,11 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.slf4j.LoggerFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 import ru.souz.proxy.app.ProxyConfig
 import ru.souz.proxy.app.proxyModule
 import ru.souz.proxy.auth.AuthResponseWithCookie
@@ -128,6 +133,127 @@ class ProxyIntegrationTest {
 
             assertEquals(HttpStatusCode.OK, response.status)
             assertEquals(payload, response.body<BackendEchoResponse>().body)
+        }
+    }
+
+    @Test
+    fun `telegram bot get request is proxied with same path and trusted headers`() = withBackendServer { backend ->
+        testApplication {
+            application {
+                proxyModule(
+                    config = testConfig(backend.baseUrl),
+                    authService = BackendAuthService(sessionLookup = { "proxy-user-123" })
+                )
+            }
+
+            val response = createJsonClient().get("/v1/chats/chat-42/telegram-bot") {
+                cookie("souz_session", "valid-session")
+                header(HttpHeaders.Authorization, "Bearer attacker")
+                header("X-User-Id", "attacker")
+                header("X-Souz-Proxy-Auth", "attacker-token")
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+
+            val echoed = response.body<BackendEchoResponse>()
+            assertEquals("GET", echoed.method)
+            assertEquals("/v1/chats/chat-42/telegram-bot", echoed.path)
+            assertEquals("proxy-user-123", echoed.headers["X-User-Id"])
+            assertEquals("proxy-token-0123456789abcdef0123456789abcdef", echoed.headers["X-Souz-Proxy-Auth"])
+            assertEquals(null, echoed.headers[HttpHeaders.Authorization])
+            assertEquals(null, echoed.headers[HttpHeaders.Cookie])
+        }
+    }
+
+    @Test
+    fun `telegram bot put request is proxied with same path body and trusted headers`() = withBackendServer { backend ->
+        testApplication {
+            application {
+                proxyModule(
+                    config = testConfig(backend.baseUrl),
+                    authService = BackendAuthService(sessionLookup = { "proxy-user-123" })
+                )
+            }
+
+            val payload = """{"botToken":"123456:ABCDEF","enabled":true}"""
+            val response = createJsonClient().put("/v1/chats/chat-42/telegram-bot") {
+                cookie("souz_session", "valid-session")
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer attacker")
+                header("X-Forwarded-For", "1.2.3.4")
+                header("X-User-Id", "attacker")
+                header("X-Souz-Proxy-Auth", "attacker-token")
+                setBody(payload)
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+
+            val echoed = response.body<BackendEchoResponse>()
+            assertEquals("PUT", echoed.method)
+            assertEquals("/v1/chats/chat-42/telegram-bot", echoed.path)
+            assertEquals(payload, echoed.body)
+            assertEquals("proxy-user-123", echoed.headers["X-User-Id"])
+            assertEquals("proxy-token-0123456789abcdef0123456789abcdef", echoed.headers["X-Souz-Proxy-Auth"])
+            assertEquals(null, echoed.headers[HttpHeaders.Authorization])
+            assertEquals(null, echoed.headers["X-Forwarded-For"])
+            assertEquals(null, echoed.headers[HttpHeaders.Cookie])
+        }
+    }
+
+    @Test
+    fun `telegram bot put request does not log bot token`() = withBackendServer { backend ->
+        val rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME) as Logger
+        val listAppender = ListAppender<ILoggingEvent>().apply { start() }
+        rootLogger.addAppender(listAppender)
+
+        try {
+            testApplication {
+                application {
+                    proxyModule(
+                        config = testConfig(backend.baseUrl),
+                        authService = BackendAuthService(sessionLookup = { "proxy-user-123" })
+                    )
+                }
+
+                val response = createJsonClient().put("/v1/chats/chat-42/telegram-bot") {
+                    cookie("souz_session", "valid-session")
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"botToken":"123456:ABCDEF","enabled":true}""")
+                }
+
+                assertEquals(HttpStatusCode.OK, response.status)
+                assertTrue(
+                    listAppender.list.none { event ->
+                        event.formattedMessage.contains("123456:ABCDEF")
+                    }
+                )
+            }
+        } finally {
+            rootLogger.detachAppender(listAppender)
+            listAppender.stop()
+        }
+    }
+
+    @Test
+    fun `telegram bot delete request is proxied with same path`() = withBackendServer { backend ->
+        testApplication {
+            application {
+                proxyModule(
+                    config = testConfig(backend.baseUrl),
+                    authService = BackendAuthService(sessionLookup = { "proxy-user-123" })
+                )
+            }
+
+            val response = createJsonClient().delete("/v1/chats/chat-42/telegram-bot") {
+                cookie("souz_session", "valid-session")
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+
+            val echoed = response.body<BackendEchoResponse>()
+            assertEquals("DELETE", echoed.method)
+            assertEquals("/v1/chats/chat-42/telegram-bot", echoed.path)
+            assertEquals("", echoed.body)
         }
     }
 

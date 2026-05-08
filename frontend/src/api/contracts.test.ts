@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getChats, createChat } from "./chats";
+import {
+  createChat,
+  deleteChatTelegramBot,
+  getChatTelegramBot,
+  getChats,
+  upsertChatTelegramBot,
+} from "./chats";
 import { getSettings, updateSettings } from "./settings";
 import { getProviderKeys } from "./providerKeys";
 import { getMessages, sendMessage } from "./messages";
@@ -74,6 +80,104 @@ describe("backend v1 response contracts", () => {
       expect.objectContaining({
         method: "POST",
         body: "{}",
+      })
+    );
+  });
+
+  it("unwraps telegram bot envelopes and hides delete payloads from callers", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          telegramBot: {
+            chatId: "chat-1",
+            enabled: true,
+            botUsername: "souz_helper_bot",
+            botFirstName: "Souz Helper",
+            createdAt: "2026-05-04T10:00:00Z",
+            updatedAt: "2026-05-04T10:00:00Z",
+            linked: false,
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          telegramBot: {
+            chatId: "chat-1",
+            enabled: true,
+            botUsername: "souz_helper_bot",
+            botFirstName: "Souz Helper",
+            createdAt: "2026-05-04T10:00:00Z",
+            updatedAt: "2026-05-04T10:05:00Z",
+            linked: true,
+            telegramUsername: "telegram_alice",
+            telegramFirstName: "Alice",
+            telegramLastName: "Walker",
+            linkedAt: "2026-05-04T10:05:00Z",
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          telegramBot: null,
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getChatTelegramBot("chat-1")).resolves.toEqual({
+      chatId: "chat-1",
+      enabled: true,
+      botUsername: "souz_helper_bot",
+      botFirstName: "Souz Helper",
+      createdAt: "2026-05-04T10:00:00Z",
+      updatedAt: "2026-05-04T10:00:00Z",
+      linked: false,
+    });
+
+    await expect(
+      upsertChatTelegramBot("chat-1", "123456:ABCDEF")
+    ).resolves.toEqual({
+      chatId: "chat-1",
+      enabled: true,
+      botUsername: "souz_helper_bot",
+      botFirstName: "Souz Helper",
+      createdAt: "2026-05-04T10:00:00Z",
+      updatedAt: "2026-05-04T10:05:00Z",
+      linked: true,
+      telegramUsername: "telegram_alice",
+      telegramFirstName: "Alice",
+      telegramLastName: "Walker",
+      linkedAt: "2026-05-04T10:05:00Z",
+    });
+
+    await expect(deleteChatTelegramBot("chat-1")).resolves.toBeUndefined();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/v1/chats/chat-1/telegram-bot",
+      expect.objectContaining({
+        method: "GET",
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/v1/chats/chat-1/telegram-bot",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ botToken: "123456:ABCDEF", enabled: true }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "/v1/chats/chat-1/telegram-bot",
+      expect.objectContaining({
+        method: "DELETE",
       })
     );
   });

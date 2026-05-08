@@ -1,6 +1,20 @@
-import { apiGet, apiPost, apiPatch } from "./http";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "./http";
 import type { Chat } from "../types/chat";
 import { requireFieldResponse, unwrapItemsResponse } from "./responses";
+
+export type TelegramBotBindingDto = {
+  chatId: string;
+  enabled: boolean;
+  botUsername?: string;
+  botFirstName?: string;
+  createdAt: string;
+  updatedAt: string;
+  linked: boolean;
+  telegramUsername?: string;
+  telegramFirstName?: string;
+  telegramLastName?: string;
+  linkedAt?: string;
+};
 
 export async function getChats(): Promise<Chat[]> {
   return unwrapItemsResponse(
@@ -29,4 +43,32 @@ export function archiveChat(chatId: string): Promise<Chat> {
 
 export function unarchiveChat(chatId: string): Promise<Chat> {
   return apiPost<Chat>(`/v1/chats/${chatId}/unarchive`);
+}
+
+export async function getChatTelegramBot(
+  chatId: string
+): Promise<TelegramBotBindingDto | null> {
+  const response = await apiGet<{ telegramBot: TelegramBotBindingDto | null }>(
+    `/v1/chats/${chatId}/telegram-bot`
+  );
+  return response.telegramBot ?? null;
+}
+
+export async function upsertChatTelegramBot(
+  chatId: string,
+  botToken: string,
+  enabled = true
+): Promise<TelegramBotBindingDto> {
+  return requireFieldResponse(
+    await apiPut<{ telegramBot?: TelegramBotBindingDto | null }>(
+      `/v1/chats/${chatId}/telegram-bot`,
+      { botToken, enabled }
+    ),
+    "telegramBot",
+    `/v1/chats/${chatId}/telegram-bot`
+  );
+}
+
+export async function deleteChatTelegramBot(chatId: string): Promise<void> {
+  await apiDelete<{ telegramBot: null }>(`/v1/chats/${chatId}/telegram-bot`);
 }
