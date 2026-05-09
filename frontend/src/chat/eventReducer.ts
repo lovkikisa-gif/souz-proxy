@@ -23,6 +23,44 @@ export function initialChatState(): ChatState {
   };
 }
 
+export function mergeMessageFromServer(
+  messages: Message[],
+  serverMessage: Message
+): Message[] {
+  let hasServerMessage = false;
+  const nextMessages: Message[] = [];
+
+  for (const message of messages) {
+    if (message.id === serverMessage.id) {
+      if (!hasServerMessage) {
+        nextMessages.push({ ...message, ...serverMessage });
+        hasServerMessage = true;
+      }
+      continue;
+    }
+
+    const matchesPending =
+      serverMessage.clientMessageId != null &&
+      message.clientMessageId === serverMessage.clientMessageId;
+
+    if (matchesPending) {
+      if (!hasServerMessage) {
+        nextMessages.push(serverMessage);
+        hasServerMessage = true;
+      }
+      continue;
+    }
+
+    nextMessages.push(message);
+  }
+
+  if (!hasServerMessage) {
+    nextMessages.push(serverMessage);
+  }
+
+  return nextMessages;
+}
+
 export function chatReducer(state: ChatState, event: BackendEvent): ChatState {
   // Idempotency: skip already-processed durable events
   if (event.durable && event.seq !== null) {
@@ -51,18 +89,18 @@ export function chatReducer(state: ChatState, event: BackendEvent): ChatState {
 
   switch (event.type) {
     case "message.created": {
-      const msgId = p.messageId as string;
-      const exists = base.messages.some((m) => m.id === msgId);
-      if (exists) return base;
       const newMsg: Message = {
-        id: msgId,
+        id: p.messageId as string,
         chatId: event.chatId,
         role: p.role as "user" | "assistant" | "system",
         content: (p.content as string) ?? "",
         clientMessageId: p.clientMessageId as string | null,
         createdAt: event.createdAt,
       };
-      return { ...base, messages: [...base.messages, newMsg] };
+      return {
+        ...base,
+        messages: mergeMessageFromServer(base.messages, newMsg),
+      };
     }
 
     case "message.delta": {
