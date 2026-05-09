@@ -5,6 +5,7 @@ import type { Execution } from "../../types/chat";
 import { TelegramBotSettings } from "./TelegramBotSettings";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
+import { useAuth } from "../../auth/useAuth";
 
 interface ChatHeaderProps {
   chat: Chat | null;
@@ -25,9 +26,11 @@ export function ChatHeader({
   onMenuToggle,
   onChatUpdated,
 }: ChatHeaderProps) {
+  const { bootstrap } = useAuth();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState("");
   const [telegramOpen, setTelegramOpen] = useState(false);
+  const telegramEnabled = bootstrap?.features.telegramBot === true;
 
   const handleRename = async () => {
     if (!chat || !title.trim()) {
@@ -159,7 +162,7 @@ export function ChatHeader({
           </button>
         )}
 
-        {chat && (
+        {chat && telegramEnabled && (
           <Button
             variant="secondary"
             size="sm"
@@ -170,7 +173,7 @@ export function ChatHeader({
         )}
       </div>
 
-      {chat && (
+      {chat && telegramEnabled && (
         <Modal open={telegramOpen} onClose={() => setTelegramOpen(false)}>
           <TelegramBotSettings key={chat.id} chatId={chat.id} />
         </Modal>

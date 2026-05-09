@@ -1,7 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatHeader } from "./ChatHeader";
+
+const useAuthMock = vi.fn();
+
+vi.mock("../../auth/useAuth", () => ({
+  useAuth: () => useAuthMock(),
+}));
 
 vi.mock("./TelegramBotSettings", () => ({
   TelegramBotSettings: ({ chatId }: { chatId: string }) => (
@@ -10,6 +16,16 @@ vi.mock("./TelegramBotSettings", () => ({
 }));
 
 describe("ChatHeader", () => {
+  beforeEach(() => {
+    useAuthMock.mockReturnValue({
+      bootstrap: {
+        features: {
+          telegramBot: true,
+        },
+      },
+    });
+  });
+
   const baseProps = {
     activeExecution: null,
     connected: true,
@@ -69,6 +85,33 @@ describe("ChatHeader", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Unarchive" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides Telegram actions when the backend feature is disabled", () => {
+    useAuthMock.mockReturnValue({
+      bootstrap: {
+        features: {
+          telegramBot: false,
+        },
+      },
+    });
+
+    render(
+      <ChatHeader
+        {...baseProps}
+        chat={{
+          id: "chat-1",
+          title: "Test chat",
+          archived: false,
+          createdAt: "2026-05-04T10:00:00Z",
+          updatedAt: "2026-05-04T10:05:00Z",
+        }}
+      />
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Telegram" })
     ).not.toBeInTheDocument();
   });
 });

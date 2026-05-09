@@ -202,6 +202,24 @@ describe("backend v1 response contracts", () => {
     );
   });
 
+  it("treats telegram bot 404 reads as no binding", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: vi.fn().mockResolvedValue({
+          error: {
+            code: "not_found",
+            message: "Not found",
+          },
+        }),
+      })
+    );
+
+    await expect(getChatTelegramBot("chat-1")).resolves.toBeNull();
+  });
+
   it("unwraps settings and provider key list envelopes", async () => {
     vi.stubGlobal(
       "fetch",

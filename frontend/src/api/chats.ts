@@ -1,6 +1,7 @@
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "./http";
 import type { Chat } from "../types/chat";
 import { requireFieldResponse, unwrapItemsResponse } from "./responses";
+import { ApiError } from "../types/api";
 
 export type TelegramBotBindingDto = {
   chatId: string;
@@ -65,10 +66,17 @@ export function unarchiveChat(chatId: string): Promise<Chat> {
 export async function getChatTelegramBot(
   chatId: string
 ): Promise<TelegramBotBindingDto | null> {
-  const response = await apiGet<{ telegramBot: TelegramBotBindingDto | null }>(
-    `/v1/chats/${chatId}/telegram-bot`
-  );
-  return response.telegramBot ?? null;
+  try {
+    const response = await apiGet<{ telegramBot: TelegramBotBindingDto | null }>(
+      `/v1/chats/${chatId}/telegram-bot`
+    );
+    return response.telegramBot ?? null;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function upsertChatTelegramBot(
