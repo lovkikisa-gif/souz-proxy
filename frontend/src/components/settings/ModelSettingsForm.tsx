@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { Settings } from "../../types/settings";
 import { getSettings, updateSettings } from "../../api/settings";
 import { useAuth } from "../../auth/useAuth";
+import { localeOptions } from "../../constants/locales";
 import { Button } from "../ui/Button";
 import { showToast } from "../ui/Toast";
 
@@ -83,6 +84,7 @@ export function ModelSettingsForm() {
     ...(onboarding?.availableModels ?? []),
     form.defaultModel ?? "",
   ]);
+  const locales = localeOptions(form.locale);
 
   if (loading && !form.defaultModel) {
     return <div className="skeleton" style={{ height: 240, width: "100%" }} />;
@@ -122,8 +124,10 @@ export function ModelSettingsForm() {
       {/* Locale & Timezone */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--color-text-secondary)" }}>Locale</label>
-          <input value={form.locale ?? ""} onChange={(e) => update("locale", e.target.value)} style={{ padding: "10px 14px", fontSize: "0.875rem", fontFamily: "var(--font-sans)", background: "var(--color-bg-primary)", color: "var(--color-text-primary)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", outline: "none" }} />
+          <label htmlFor="model-settings-locale" style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--color-text-secondary)" }}>Locale</label>
+          <select id="model-settings-locale" aria-label="Locale" value={form.locale ?? ""} onChange={(e) => update("locale", e.target.value)} style={{ padding: "10px 14px", fontSize: "0.875rem", fontFamily: "var(--font-sans)", background: "var(--color-bg-primary)", color: "var(--color-text-primary)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", outline: "none" }}>
+            {locales.map((locale) => <option key={locale} value={locale}>{locale}</option>)}
+          </select>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--color-text-secondary)" }}>Timezone</label>

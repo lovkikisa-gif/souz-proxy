@@ -18,7 +18,7 @@ export function ChatPage() {
   const chat = chats.find((c) => c.id === chatId) ?? null;
 
   const {
-    messages, streamingContent, toolCalls, options,
+    messages, streamingContent, toolCalls, executionAssistantMessageIds, options,
     activeExecution, loading, connected, reconnecting,
     manualReconnect, addOptimisticMessage,
   } = useChatMessages(chatId ?? null);
@@ -37,7 +37,8 @@ export function ChatPage() {
         onManualReconnect={manualReconnect} onMenuToggle={onMenuToggle}
         onChatUpdated={loadChats} />
       <MessageList messages={messages} streamingContent={streamingContent}
-        toolCalls={toolCalls} options={options} onOptionAnswered={() => {}} />
+        toolCalls={toolCalls} executionAssistantMessageIds={executionAssistantMessageIds}
+        options={options} onOptionAnswered={() => {}} />
       <Composer onSend={send} onCancel={cancel} sending={sending}
         hasActiveExecution={activeExecution !== null} cancelling={cancelling} />
     </div>

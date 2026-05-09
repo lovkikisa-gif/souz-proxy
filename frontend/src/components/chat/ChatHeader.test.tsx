@@ -49,4 +49,26 @@ describe("ChatHeader", () => {
       screen.queryByRole("button", { name: "Telegram" })
     ).not.toBeInTheDocument();
   });
+
+  it("does not render archive actions in the header anymore", () => {
+    render(
+      <ChatHeader
+        {...baseProps}
+        chat={{
+          id: "chat-1",
+          title: "Test chat",
+          archived: false,
+          createdAt: "2026-05-04T10:00:00Z",
+          updatedAt: "2026-05-04T10:05:00Z",
+        }}
+      />
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Archive" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Unarchive" })
+    ).not.toBeInTheDocument();
+  });
 });

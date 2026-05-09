@@ -16,9 +16,26 @@ export type TelegramBotBindingDto = {
   linkedAt?: string;
 };
 
-export async function getChats(): Promise<Chat[]> {
+export interface GetChatsOptions {
+  includeArchived?: boolean;
+  limit?: number;
+}
+
+export async function getChats(options: GetChatsOptions = {}): Promise<Chat[]> {
+  const searchParams = new URLSearchParams();
+
+  if (options.includeArchived) {
+    searchParams.set("includeArchived", "true");
+  }
+  if (options.limit != null) {
+    searchParams.set("limit", String(options.limit));
+  }
+
+  const query = searchParams.toString();
+  const endpoint = query ? `/v1/chats?${query}` : "/v1/chats";
+
   return unwrapItemsResponse(
-    await apiGet<{ items?: Chat[] | null } | Chat[]>("/v1/chats")
+    await apiGet<{ items?: Chat[] | null } | Chat[]>(endpoint)
   );
 }
 

@@ -166,9 +166,10 @@ describe("OnboardingPage", () => {
     );
     await user.click(screen.getByRole("button", { name: /^continue$/i }));
 
-    const localeInput = await screen.findByDisplayValue("ru-RU");
-    await user.clear(localeInput);
-    await user.type(localeInput, "en-US");
+    await user.selectOptions(
+      await screen.findByLabelText("Locale"),
+      "en-US"
+    );
 
     await user.click(screen.getByRole("button", { name: /finish setup/i }));
 

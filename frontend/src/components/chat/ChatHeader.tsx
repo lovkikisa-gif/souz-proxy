@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Chat } from "../../types/chat";
-import { updateChatTitle, archiveChat, unarchiveChat } from "../../api/chats";
+import { updateChatTitle } from "../../api/chats";
 import type { Execution } from "../../types/chat";
 import { TelegramBotSettings } from "./TelegramBotSettings";
 import { Button } from "../ui/Button";
@@ -41,20 +41,6 @@ export function ChatHeader({
       // ignore
     }
     setEditing(false);
-  };
-
-  const handleArchive = async () => {
-    if (!chat) return;
-    try {
-      if (chat.archived) {
-        await unarchiveChat(chat.id);
-      } else {
-        await archiveChat(chat.id);
-      }
-      onChatUpdated();
-    } catch {
-      // ignore
-    }
   };
 
   return (
@@ -181,22 +167,6 @@ export function ChatHeader({
           >
             Telegram
           </Button>
-        )}
-
-        {chat && (
-          <button
-            onClick={handleArchive}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--color-text-muted)",
-              cursor: "pointer",
-              fontSize: "0.75rem",
-              padding: "4px 8px",
-            }}
-          >
-            {chat.archived ? "Unarchive" : "Archive"}
-          </button>
         )}
       </div>
 
