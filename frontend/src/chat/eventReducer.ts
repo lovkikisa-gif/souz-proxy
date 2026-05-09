@@ -62,6 +62,44 @@ export function initialChatState(): ChatState {
   };
 }
 
+export function mergeMessageFromServer(
+  messages: Message[],
+  serverMessage: Message
+): Message[] {
+  let hasServerMessage = false;
+  const nextMessages: Message[] = [];
+
+  for (const message of messages) {
+    if (message.id === serverMessage.id) {
+      if (!hasServerMessage) {
+        nextMessages.push({ ...message, ...serverMessage });
+        hasServerMessage = true;
+      }
+      continue;
+    }
+
+    const matchesPending =
+      serverMessage.clientMessageId != null &&
+      message.clientMessageId === serverMessage.clientMessageId;
+
+    if (matchesPending) {
+      if (!hasServerMessage) {
+        nextMessages.push(serverMessage);
+        hasServerMessage = true;
+      }
+      continue;
+    }
+
+    nextMessages.push(message);
+  }
+
+  if (!hasServerMessage) {
+    nextMessages.push(serverMessage);
+  }
+
+  return nextMessages;
+}
+
 export function chatReducer(state: ChatState, event: BackendEvent): ChatState {
   // Idempotency: skip already-processed durable events
   if (event.durable && event.seq !== null) {
@@ -91,12 +129,11 @@ export function chatReducer(state: ChatState, event: BackendEvent): ChatState {
   switch (event.type) {
     case "message.created": {
       const msgId = p.messageId as string;
-      const exists = base.messages.some((m) => m.id === msgId);
       const role = p.role as "user" | "assistant" | "system";
-      const nextState = role === "assistant"
+      const nextState =
+        role === "assistant"
         ? withAssistantMessageId(base, event.executionId, msgId)
         : base;
-      if (exists) return nextState;
       const newMsg: Message = {
         id: msgId,
         chatId: event.chatId,
@@ -105,7 +142,10 @@ export function chatReducer(state: ChatState, event: BackendEvent): ChatState {
         clientMessageId: p.clientMessageId as string | null,
         createdAt: event.createdAt,
       };
-      return { ...nextState, messages: [...nextState.messages, newMsg] };
+      return {
+        ...nextState,
+        messages: mergeMessageFromServer(nextState.messages, newMsg),
+      };
     }
 
     case "message.delta": {

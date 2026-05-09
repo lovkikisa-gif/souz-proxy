@@ -20,13 +20,14 @@ export function ChatPage() {
   const {
     messages, streamingContent, toolCalls, executionAssistantMessageIds, options,
     activeExecution, loading, connected, reconnecting,
-    manualReconnect, addOptimisticMessage,
+    manualReconnect, addOptimisticMessage, applyServerMessage,
   } = useChatMessages(chatId ?? null);
 
   const { send, cancel, sending, cancelling } = useActiveChat({
     chatId: chatId ?? null,
     hasActiveExecution: activeExecution !== null,
     addOptimisticMessage,
+    applyServerMessage,
     onChatCreated: () => loadChats(),
   });
 

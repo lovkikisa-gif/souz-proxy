@@ -89,6 +89,9 @@ class DeploymentArtifactsTest {
         assertFileContains("deploy/deploy.env.example", "TELEGRAM_TOKEN_ENCRYPTION_KEY=replace_me_long_random_value")
         assertFileContains("deploy/deploy-vm.sh", "require_env TELEGRAM_TOKEN_ENCRYPTION_KEY")
         assertFileContains("deploy/deploy-vm.sh", "append_env_line TELEGRAM_TOKEN_ENCRYPTION_KEY")
+        assertFileContains("deploy/deploy-vm.sh", "ControlMaster=auto")
+        assertFileContains("deploy/deploy-vm.sh", "ControlPersist=10m")
+        assertFileContains("deploy/deploy-vm.sh", "SSH control connection established.")
         assertFileContains("deploy/deploy-vm.sh", "build-images.sh")
         assertFileContains("deploy/deploy-vm.sh", "export-images.sh")
         assertFileContains("deploy/deploy-vm.sh", "scp")
@@ -96,6 +99,7 @@ class DeploymentArtifactsTest {
         assertFileContains("deploy/deploy-vm.sh", "remote-bootstrap-vm.sh")
         assertFileContains("deploy/remote-bootstrap-vm.sh", "load-and-run.sh")
         assertFileContains("deploy/remote-bootstrap-vm.sh", "docker compose --env-file .env -f docker-compose.prod.yml ps")
+        assertFileContains("deploy/README.md", "prompts for the SSH password once at the start")
     }
 
     private fun assertFileContains(relativePath: String, needle: String) {
