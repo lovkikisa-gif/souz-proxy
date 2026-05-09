@@ -3,7 +3,12 @@ import type { Message } from "../types/chat";
 import type { BackendEvent } from "../types/events";
 import { getMessages } from "../api/messages";
 import { getEvents } from "../api/events";
-import { chatReducer, initialChatState, type ChatState } from "./eventReducer";
+import {
+  chatReducer,
+  initialChatState,
+  mergeMessageFromServer,
+  type ChatState,
+} from "./eventReducer";
 import { useChatSocket } from "./useChatSocket";
 
 export function useChatMessages(chatId: string | null) {
@@ -87,6 +92,13 @@ export function useChatMessages(chatId: string | null) {
     }));
   }, []);
 
+  const applyServerMessage = useCallback((msg: Message) => {
+    setState((prev) => ({
+      ...prev,
+      messages: mergeMessageFromServer(prev.messages, msg),
+    }));
+  }, []);
+
   return {
     ...state,
     loading,
@@ -95,5 +107,6 @@ export function useChatMessages(chatId: string | null) {
     reconnecting,
     manualReconnect,
     addOptimisticMessage,
+    applyServerMessage,
   };
 }

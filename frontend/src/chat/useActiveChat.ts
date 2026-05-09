@@ -9,6 +9,7 @@ interface UseActiveChatOptions {
   chatId: string | null;
   hasActiveExecution: boolean;
   addOptimisticMessage: (msg: Message) => void;
+  applyServerMessage: (msg: Message) => void;
   onChatCreated?: (chatId: string) => void;
 }
 
@@ -16,6 +17,7 @@ export function useActiveChat({
   chatId,
   hasActiveExecution,
   addOptimisticMessage,
+  applyServerMessage,
   onChatCreated,
 }: UseActiveChatOptions) {
   const [sending, setSending] = useState(false);
@@ -53,18 +55,26 @@ export function useActiveChat({
 
       setSending(true);
       try {
-        await sendMessage(targetChatId, {
+        const serverMessage = await sendMessage(targetChatId, {
           content,
           clientMessageId,
           options,
         });
+        applyServerMessage(serverMessage);
       } catch {
         // error handling — could show toast
       } finally {
         setSending(false);
       }
     },
-    [chatId, sending, hasActiveExecution, addOptimisticMessage, onChatCreated]
+    [
+      chatId,
+      sending,
+      hasActiveExecution,
+      addOptimisticMessage,
+      applyServerMessage,
+      onChatCreated,
+    ]
   );
 
   const cancel = useCallback(async () => {

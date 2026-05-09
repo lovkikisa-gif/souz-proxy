@@ -45,8 +45,6 @@ SOUZ_VERSION=${SOUZ_VERSION:-latest}
 REMOTE_TARGET="${DEPLOY_USER}@${DEPLOY_HOST}"
 REMOTE_RELEASE_ID=$(date -u +"%Y%m%d%H%M%S")
 REMOTE_RELEASE_DIR="${REMOTE_APP_DIR}/releases/${REMOTE_RELEASE_ID}"
-SSH_ARGS=(-p "$DEPLOY_SSH_PORT")
-SCP_ARGS=(-P "$DEPLOY_SSH_PORT")
 
 if [[ -z "${BACKEND_DIR:-}" ]]; then
     if [[ -d "$ROOT_DIR/../abledo" ]]; then
@@ -61,7 +59,42 @@ if [[ -z "${OUT_DIR:-}" ]]; then
 fi
 
 APP_ENV_FILE=$(mktemp)
-trap 'rm -f "$APP_ENV_FILE"' EXIT
+SSH_CONTROL_DIR=$(mktemp -d)
+SSH_CONTROL_PATH="$SSH_CONTROL_DIR/ctl"
+SSH_MASTER_ARGS=(
+    -p "$DEPLOY_SSH_PORT"
+    -o ControlMaster=yes
+    -o ControlPersist=10m
+    -o ControlPath="$SSH_CONTROL_PATH"
+)
+SSH_ARGS=(
+    -p "$DEPLOY_SSH_PORT"
+    -o ControlMaster=auto
+    -o ControlPersist=10m
+    -o ControlPath="$SSH_CONTROL_PATH"
+)
+SCP_ARGS=(
+    -P "$DEPLOY_SSH_PORT"
+    -o ControlMaster=auto
+    -o ControlPersist=10m
+    -o ControlPath="$SSH_CONTROL_PATH"
+)
+SSH_CONTROL_READY=false
+
+cleanup() {
+    local status=$?
+    trap - EXIT
+
+    if [[ "${SSH_CONTROL_READY:-false}" == "true" ]]; then
+        ssh -S "$SSH_CONTROL_PATH" -O exit -p "$DEPLOY_SSH_PORT" "$REMOTE_TARGET" >/dev/null 2>&1 || true
+    fi
+
+    rm -rf "$SSH_CONTROL_DIR"
+    rm -f "$APP_ENV_FILE"
+    exit "$status"
+}
+
+trap cleanup EXIT
 
 append_env_line() {
     local key=$1
@@ -149,9 +182,17 @@ render_app_env() {
     append_env_if_set GIGA_LOG_LEVEL
 }
 
+start_ssh_control_connection() {
+    printf 'Opening shared SSH control connection to %s. Enter the SSH password once if prompted.\n' "$REMOTE_TARGET"
+    ssh -Nf "${SSH_MASTER_ARGS[@]}" "$REMOTE_TARGET"
+    SSH_CONTROL_READY=true
+    printf 'SSH control connection established.\n'
+}
+
 printf 'Deploy target: %s\n' "$REMOTE_TARGET"
 printf 'Remote release: %s\n' "$REMOTE_RELEASE_DIR"
 printf 'Bundle output: %s\n' "$OUT_DIR"
+start_ssh_control_connection
 
 if [[ "$BUILD_IMAGES_LOCALLY" == "true" ]]; then
     printf 'Building Docker images locally...\n'
