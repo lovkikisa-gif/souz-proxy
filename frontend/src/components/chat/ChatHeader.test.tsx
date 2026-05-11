@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AppPreferencesProvider } from "../../preferences/AppPreferencesProvider";
 import { ChatHeader } from "./ChatHeader";
 
 const useAuthMock = vi.fn();
@@ -35,21 +36,24 @@ describe("ChatHeader", () => {
     onChatUpdated: vi.fn(),
   };
 
+  function renderHeader(chat: Parameters<typeof ChatHeader>[0]["chat"]) {
+    return render(
+      <AppPreferencesProvider>
+        <ChatHeader {...baseProps} chat={chat} />
+      </AppPreferencesProvider>
+    );
+  }
+
   it("opens Telegram settings for the active chat", async () => {
     const user = userEvent.setup();
 
-    render(
-      <ChatHeader
-        {...baseProps}
-        chat={{
-          id: "chat-1",
-          title: "Test chat",
-          archived: false,
-          createdAt: "2026-05-04T10:00:00Z",
-          updatedAt: "2026-05-04T10:05:00Z",
-        }}
-      />
-    );
+    renderHeader({
+      id: "chat-1",
+      title: "Test chat",
+      archived: false,
+      createdAt: "2026-05-04T10:00:00Z",
+      updatedAt: "2026-05-04T10:05:00Z",
+    });
 
     await user.click(screen.getByRole("button", { name: "Telegram" }));
 
@@ -58,8 +62,27 @@ describe("ChatHeader", () => {
     );
   });
 
+  it("renders a close button for Telegram settings even without a modal title", async () => {
+    const user = userEvent.setup();
+
+    renderHeader({
+      id: "chat-1",
+      title: "Test chat",
+      archived: false,
+      createdAt: "2026-05-04T10:00:00Z",
+      updatedAt: "2026-05-04T10:05:00Z",
+    });
+
+    await user.click(screen.getByRole("button", { name: "Telegram" }));
+    expect(screen.getByTestId("telegram-settings")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close dialog" }));
+
+    expect(screen.queryByTestId("telegram-settings")).not.toBeInTheDocument();
+  });
+
   it("does not show Telegram settings when there is no active chat", () => {
-    render(<ChatHeader {...baseProps} chat={null} />);
+    renderHeader(null);
 
     expect(
       screen.queryByRole("button", { name: "Telegram" })
@@ -67,18 +90,13 @@ describe("ChatHeader", () => {
   });
 
   it("does not render archive actions in the header anymore", () => {
-    render(
-      <ChatHeader
-        {...baseProps}
-        chat={{
-          id: "chat-1",
-          title: "Test chat",
-          archived: false,
-          createdAt: "2026-05-04T10:00:00Z",
-          updatedAt: "2026-05-04T10:05:00Z",
-        }}
-      />
-    );
+    renderHeader({
+      id: "chat-1",
+      title: "Test chat",
+      archived: false,
+      createdAt: "2026-05-04T10:00:00Z",
+      updatedAt: "2026-05-04T10:05:00Z",
+    });
 
     expect(
       screen.queryByRole("button", { name: "Archive" })
@@ -97,18 +115,13 @@ describe("ChatHeader", () => {
       },
     });
 
-    render(
-      <ChatHeader
-        {...baseProps}
-        chat={{
-          id: "chat-1",
-          title: "Test chat",
-          archived: false,
-          createdAt: "2026-05-04T10:00:00Z",
-          updatedAt: "2026-05-04T10:05:00Z",
-        }}
-      />
-    );
+    renderHeader({
+      id: "chat-1",
+      title: "Test chat",
+      archived: false,
+      createdAt: "2026-05-04T10:00:00Z",
+      updatedAt: "2026-05-04T10:05:00Z",
+    });
 
     expect(
       screen.queryByRole("button", { name: "Telegram" })

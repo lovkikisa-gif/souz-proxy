@@ -15,6 +15,9 @@ export function AppShell() {
   const [showArchived, setShowArchived] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pinnedChatIds, setPinnedChatIds] = useState<string[]>([]);
+  const [lastVisitedChatId, setLastVisitedChatId] = useState<string | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { chatId } = useParams();
@@ -26,6 +29,12 @@ export function AppShell() {
   }, []);
 
   useEffect(() => { loadChats(); }, [loadChats]);
+
+  useEffect(() => {
+    if (chatId) {
+      setLastVisitedChatId(chatId);
+    }
+  }, [chatId]);
 
   useEffect(() => {
     if (!user) {
@@ -104,7 +113,14 @@ export function AppShell() {
       )}
       {/* Main content */}
       <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
-        <Outlet context={{ chats, loadChats, onMenuToggle: () => setSidebarOpen(true) }} />
+        <Outlet
+          context={{
+            chats,
+            loadChats,
+            onMenuToggle: () => setSidebarOpen(true),
+            lastVisitedChatId,
+          }}
+        />
       </main>
       {/* Responsive CSS */}
       <style>{`

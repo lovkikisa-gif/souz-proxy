@@ -83,6 +83,13 @@ class DeploymentArtifactsTest {
     }
 
     @Test
+    fun `welcome key hash helper stays independent from gradle runtime`() {
+        assertFileContains("hash-welcome-key.sh", "openssl dgst -sha256 -hmac")
+        assertFileContains("hash-welcome-key.sh", "WELCOME_KEY_SECRET")
+        assertFileDoesNotContain("hash-welcome-key.sh", "./gradlew hashWelcomeKey")
+    }
+
+    @Test
     fun `vm deploy automation ships dedicated config and remote bootstrap scripts`() {
         assertFileContains("deploy/common.sh", "load_env_file()")
         assertFileContains("deploy/deploy.env.example", "DEPLOY_HOST=")
@@ -110,6 +117,12 @@ class DeploymentArtifactsTest {
         val path = repoRoot.resolve(relativePath)
         assertTrue(path.exists(), "$relativePath should exist.")
         assertTrue(path.readText().contains(needle), "$relativePath should contain: $needle")
+    }
+
+    private fun assertFileDoesNotContain(relativePath: String, needle: String) {
+        val path = repoRoot.resolve(relativePath)
+        assertTrue(path.exists(), "$relativePath should exist.")
+        assertTrue(!path.readText().contains(needle), "$relativePath should not contain: $needle")
     }
 
     private fun read(relativePath: String): String {

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
+import { AppPreferencesProvider } from "../../preferences/AppPreferencesProvider";
 import { Sidebar } from "./Sidebar";
 
 vi.mock("../../auth/useAuth", () => ({
@@ -48,18 +49,20 @@ const chats = [
 function renderSidebar(overrides: Partial<ComponentProps<typeof Sidebar>> = {}) {
   return render(
     <MemoryRouter>
-      <Sidebar
-        chats={chats}
-        activeChatId="chat-1"
-        showArchived={false}
-        pinnedChatIds={[]}
-        onTogglePin={vi.fn()}
-        onChatsChanged={vi.fn()}
-        onToggleArchived={vi.fn()}
-        onNewChat={vi.fn()}
-        onSelectChat={vi.fn()}
-        {...overrides}
-      />
+      <AppPreferencesProvider>
+        <Sidebar
+          chats={chats}
+          activeChatId="chat-1"
+          showArchived={false}
+          pinnedChatIds={[]}
+          onTogglePin={vi.fn()}
+          onChatsChanged={vi.fn()}
+          onToggleArchived={vi.fn()}
+          onNewChat={vi.fn()}
+          onSelectChat={vi.fn()}
+          {...overrides}
+        />
+      </AppPreferencesProvider>
     </MemoryRouter>
   );
 }
@@ -73,17 +76,19 @@ describe("Sidebar", () => {
 
     rerender(
       <MemoryRouter>
-        <Sidebar
-          chats={chats}
-          activeChatId="chat-1"
-          showArchived
-          pinnedChatIds={[]}
-          onTogglePin={vi.fn()}
-          onChatsChanged={vi.fn()}
-          onToggleArchived={vi.fn()}
-          onNewChat={vi.fn()}
-          onSelectChat={vi.fn()}
-        />
+        <AppPreferencesProvider>
+          <Sidebar
+            chats={chats}
+            activeChatId="chat-1"
+            showArchived
+            pinnedChatIds={[]}
+            onTogglePin={vi.fn()}
+            onChatsChanged={vi.fn()}
+            onToggleArchived={vi.fn()}
+            onNewChat={vi.fn()}
+            onSelectChat={vi.fn()}
+          />
+        </AppPreferencesProvider>
       </MemoryRouter>
     );
 
@@ -104,6 +109,25 @@ describe("Sidebar", () => {
     expect(within(menu).getByRole("button", { name: "Rename" })).toBeInTheDocument();
     expect(within(menu).getByRole("button", { name: "Pin chat" })).toBeInTheDocument();
     expect(within(menu).getByRole("button", { name: "Archive chat" })).toBeInTheDocument();
+  });
+
+  it("closes the chat row menu when the user clicks outside of it", async () => {
+    const user = userEvent.setup();
+
+    renderSidebar();
+
+    await user.click(
+      screen.getByRole("button", { name: "Chat actions for Recent chat" })
+    );
+    expect(
+      screen.getByRole("menu", { name: "Chat actions" })
+    ).toBeInTheDocument();
+
+    await user.click(document.body);
+
+    expect(
+      screen.queryByRole("menu", { name: "Chat actions" })
+    ).not.toBeInTheDocument();
   });
 
   it("sorts pinned chats before unpinned chats inside the current filter", () => {

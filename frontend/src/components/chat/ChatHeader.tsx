@@ -6,6 +6,7 @@ import { TelegramBotSettings } from "./TelegramBotSettings";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
 import { useAuth } from "../../auth/useAuth";
+import { useAppPreferences } from "../../preferences/AppPreferencesProvider";
 
 interface ChatHeaderProps {
   chat: Chat | null;
@@ -27,6 +28,7 @@ export function ChatHeader({
   onChatUpdated,
 }: ChatHeaderProps) {
   const { bootstrap } = useAuth();
+  const { t } = useAppPreferences();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState("");
   const [telegramOpen, setTelegramOpen] = useState(false);
@@ -168,7 +170,7 @@ export function ChatHeader({
             size="sm"
             onClick={() => setTelegramOpen(true)}
           >
-            Telegram
+            {t("chat.telegram")}
           </Button>
         )}
       </div>

@@ -6,6 +6,7 @@ import { useAuth } from "../../auth/useAuth";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { showToast } from "../ui/Toast";
+import { formStackStyle, helperTextStyle, sectionTitleStyle } from "./styles";
 
 export function ProviderKeysPanel() {
   const { onboarding, refreshOnboarding } = useAuth();
@@ -28,9 +29,9 @@ export function ProviderKeysPanel() {
   if (loading) return <div className="skeleton" style={{ height: 80, width: "100%" }} />;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <h3 style={{ fontSize: "1rem", fontWeight: 600 }}>Provider Keys</h3>
-      <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+    <div style={formStackStyle}>
+      <h3 style={sectionTitleStyle}>Provider Keys</h3>
+      <p style={helperTextStyle}>
         Keys are stored securely and encrypted on the server. Full keys are never displayed.
       </p>
       {providers.length === 0 && <p style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>No provider keys configured.</p>}

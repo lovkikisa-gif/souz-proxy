@@ -1,7 +1,8 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { archiveChat, unarchiveChat, updateChatTitle } from "../../api/chats";
 import { useAuth } from "../../auth/useAuth";
+import { useAppPreferences } from "../../preferences/AppPreferencesProvider";
 import type { Chat } from "../../types/chat";
 import { Button } from "../ui/Button";
 
@@ -33,11 +34,51 @@ export function Sidebar({
   onClose,
 }: SidebarProps) {
   const { user, logout } = useAuth();
+  const { t } = useAppPreferences();
   const navigate = useNavigate();
   const [menuChatId, setMenuChatId] = useState<string | null>(null);
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
   const [savingChatId, setSavingChatId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!menuChatId) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) {
+        return;
+      }
+
+      if (menuRef.current?.contains(target)) {
+        return;
+      }
+
+      if (menuButtonRef.current?.contains(target)) {
+        return;
+      }
+
+      setMenuChatId(null);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuChatId(null);
+      }
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [menuChatId]);
 
   const filteredChats = chats
     .filter((chat) => (showArchived ? chat.archived : !chat.archived))
@@ -129,6 +170,7 @@ export function Sidebar({
         {mobile && onClose ? (
           <button
             onClick={onClose}
+            aria-label={t("sidebar.close")}
             style={{
               background: "none",
               border: "none",
@@ -149,7 +191,7 @@ export function Sidebar({
           size="sm"
           style={{ width: "100%", gap: 6 }}
         >
-          <span style={{ fontSize: "1.1rem" }}>+</span> New chat
+          <span style={{ fontSize: "1.1rem" }}>+</span> {t("sidebar.newChat")}
         </Button>
       </div>
 
@@ -176,7 +218,7 @@ export function Sidebar({
             cursor: "pointer",
           }}
         >
-          Recent
+          {t("sidebar.recent")}
         </button>
         <button
           onClick={() => !showArchived && onToggleArchived()}
@@ -194,7 +236,7 @@ export function Sidebar({
             cursor: "pointer",
           }}
         >
-          Archived
+          {t("sidebar.archived")}
         </button>
       </div>
 
@@ -214,7 +256,7 @@ export function Sidebar({
               fontSize: "0.8125rem",
             }}
           >
-            {showArchived ? "No archived chats" : "No chats yet"}
+            {showArchived ? t("sidebar.noArchived") : t("sidebar.noRecent")}
           </div>
         ) : (
           filteredChats.map((chat) => (
@@ -322,7 +364,7 @@ export function Sidebar({
                               flexShrink: 0,
                             }}
                           >
-                            Pinned
+                            {t("sidebar.pinned")}
                           </span>
                         ) : null}
                       </div>
@@ -351,6 +393,7 @@ export function Sidebar({
                     aria-label={`Chat actions for ${chat.title || "Untitled chat"}`}
                     onClick={(event) => {
                       event.stopPropagation();
+                      menuButtonRef.current = event.currentTarget;
                       setMenuChatId((current) => current === chat.id ? null : chat.id);
                     }}
                     style={{
@@ -370,8 +413,9 @@ export function Sidebar({
 
               {menuChatId === chat.id ? (
                 <div
+                  ref={menuRef}
                   role="menu"
-                  aria-label="Chat actions"
+                  aria-label={t("sidebar.chatActions")}
                   style={{
                     position: "absolute",
                     top: "calc(100% + 4px)",
@@ -396,7 +440,7 @@ export function Sidebar({
                     }}
                     style={menuButtonStyle}
                   >
-                    Rename
+                    {t("sidebar.rename")}
                   </button>
                   <button
                     onClick={() => {
@@ -405,13 +449,13 @@ export function Sidebar({
                     }}
                     style={menuButtonStyle}
                   >
-                    {pinnedChatIds.includes(chat.id) ? "Unpin chat" : "Pin chat"}
+                    {pinnedChatIds.includes(chat.id) ? t("sidebar.unpin") : t("sidebar.pin")}
                   </button>
                   <button
                     onClick={() => void handleArchiveToggle(chat)}
                     style={menuButtonStyle}
                   >
-                    {chat.archived ? "Restore chat" : "Archive chat"}
+                    {chat.archived ? t("sidebar.restore") : t("sidebar.archive")}
                   </button>
                 </div>
               ) : null}
@@ -447,7 +491,7 @@ export function Sidebar({
             transition: "all 0.15s ease",
           })}
         >
-          ⚙ Settings
+          ⚙ {t("sidebar.settings")}
         </NavLink>
 
         <div
@@ -482,7 +526,7 @@ export function Sidebar({
               transition: "color 0.15s ease",
             }}
           >
-            Logout
+            {t("sidebar.logout")}
           </button>
         </div>
       </div>

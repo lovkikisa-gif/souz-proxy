@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { useAppPreferences } from "../../preferences/AppPreferencesProvider";
 
 interface ModalProps {
   open: boolean;
@@ -8,6 +9,8 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children }: ModalProps) {
+  const { t } = useAppPreferences();
+
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -38,35 +41,40 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       <div
         className="glass-card animate-fade-in"
         style={{
+          position: "relative",
           width: "min(480px, calc(100vw - 32px))",
           maxHeight: "80vh",
           overflow: "auto",
           padding: "24px",
         }}
       >
+        <button
+          aria-label={t("common.closeDialog")}
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: 16,
+            right: 16,
+            background: "none",
+            border: "none",
+            color: "var(--color-text-muted)",
+            cursor: "pointer",
+            fontSize: "1.25rem",
+            padding: 4,
+          }}
+        >
+          ✕
+        </button>
         {title && (
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
               marginBottom: 16,
+              paddingRight: 32,
             }}
           >
             <h3 style={{ fontSize: "1.125rem", fontWeight: 600 }}>{title}</h3>
-            <button
-              onClick={onClose}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--color-text-muted)",
-                cursor: "pointer",
-                fontSize: "1.25rem",
-                padding: 4,
-              }}
-            >
-              ✕
-            </button>
           </div>
         )}
         {children}
