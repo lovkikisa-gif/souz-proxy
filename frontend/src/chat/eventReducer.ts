@@ -7,8 +7,46 @@ export interface ChatState {
   toolCalls: Record<string, ToolCall>; // toolCallId -> ToolCall
   options: Record<string, OptionRequest>; // optionId -> OptionRequest
   activeExecution: Execution | null;
+  executionAssistantMessageIds: Record<string, string>;
   lastDurableSeq: number;
   processedSeqs: Set<number>;
+}
+
+function serializePreview(value: unknown): string | null {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function withAssistantMessageId(
+  state: ChatState,
+  executionId: string | null,
+  messageId: string | null
+): ChatState {
+  if (!executionId || !messageId) {
+    return state;
+  }
+
+  if (state.executionAssistantMessageIds[executionId] === messageId) {
+    return state;
+  }
+
+  return {
+    ...state,
+    executionAssistantMessageIds: {
+      ...state.executionAssistantMessageIds,
+      [executionId]: messageId,
+    },
+  };
 }
 
 export function initialChatState(): ChatState {
@@ -18,6 +56,7 @@ export function initialChatState(): ChatState {
     toolCalls: {},
     options: {},
     activeExecution: null,
+    executionAssistantMessageIds: {},
     lastDurableSeq: 0,
     processedSeqs: new Set(),
   };
@@ -89,28 +128,35 @@ export function chatReducer(state: ChatState, event: BackendEvent): ChatState {
 
   switch (event.type) {
     case "message.created": {
+      const msgId = p.messageId as string;
+      const role = p.role as "user" | "assistant" | "system";
+      const nextState =
+        role === "assistant"
+        ? withAssistantMessageId(base, event.executionId, msgId)
+        : base;
       const newMsg: Message = {
-        id: p.messageId as string,
+        id: msgId,
         chatId: event.chatId,
-        role: p.role as "user" | "assistant" | "system",
+        role,
         content: (p.content as string) ?? "",
         clientMessageId: p.clientMessageId as string | null,
         createdAt: event.createdAt,
       };
       return {
-        ...base,
-        messages: mergeMessageFromServer(base.messages, newMsg),
+        ...nextState,
+        messages: mergeMessageFromServer(nextState.messages, newMsg),
       };
     }
 
     case "message.delta": {
       const msgId = p.messageId as string;
       const delta = p.delta as string;
-      const current = base.streamingContent[msgId] ?? "";
+      const current = state.streamingContent[msgId] ?? "";
+      const nextState = withAssistantMessageId(base, event.executionId, msgId);
       return {
-        ...base,
+        ...nextState,
         streamingContent: {
-          ...base.streamingContent,
+          ...nextState.streamingContent,
           [msgId]: current + delta,
         },
       };
@@ -118,11 +164,12 @@ export function chatReducer(state: ChatState, event: BackendEvent): ChatState {
 
     case "message.completed": {
       const msgId = p.messageId as string;
+      const nextState = withAssistantMessageId(base, event.executionId, msgId);
       const finalContent =
         (p.content as string) ??
-        base.streamingContent[msgId] ??
+        nextState.streamingContent[msgId] ??
         "";
-      const messages = base.messages.map((m) =>
+      const messages = nextState.messages.map((m) =>
         m.id === msgId ? { ...m, content: finalContent } : m
       );
       // If message doesn't exist yet, add it
@@ -135,9 +182,9 @@ export function chatReducer(state: ChatState, event: BackendEvent): ChatState {
           createdAt: event.createdAt,
         });
       }
-      const newStreaming = { ...base.streamingContent };
+      const newStreaming = { ...nextState.streamingContent };
       delete newStreaming[msgId];
-      return { ...base, messages, streamingContent: newStreaming };
+      return { ...nextState, messages, streamingContent: newStreaming };
     }
 
     case "tool.call.started": {
@@ -145,9 +192,10 @@ export function chatReducer(state: ChatState, event: BackendEvent): ChatState {
       const tc: ToolCall = {
         id: tcId,
         executionId: event.executionId ?? "",
-        toolName: p.toolName as string,
+        toolName: (p.toolName as string) ?? (p.name as string) ?? "tool",
         status: "running",
-        argumentsPreview: (p.argumentsPreview as string) ?? null,
+        argumentKeys: (p.argumentKeys as string[]) ?? [],
+        argumentsPreview: serializePreview(p.argumentsPreview),
         resultPreview: null,
         error: null,
         durationMs: null,
@@ -169,7 +217,7 @@ export function chatReducer(state: ChatState, event: BackendEvent): ChatState {
           [tcId]: {
             ...existing,
             status: "finished",
-            resultPreview: (p.resultPreview as string) ?? null,
+            resultPreview: serializePreview(p.resultPreview),
             durationMs: (p.durationMs as number) ?? null,
           },
         },
@@ -188,6 +236,7 @@ export function chatReducer(state: ChatState, event: BackendEvent): ChatState {
             ...existing,
             status: "failed",
             error: (p.error as string) ?? "Unknown error",
+            durationMs: (p.durationMs as number) ?? null,
           },
         },
       };
@@ -240,21 +289,33 @@ export function chatReducer(state: ChatState, event: BackendEvent): ChatState {
 
     case "execution.finished": {
       return {
-        ...base,
+        ...withAssistantMessageId(
+          base,
+          event.executionId,
+          (p.assistantMessageId as string) ?? null
+        ),
         activeExecution: null,
       };
     }
 
     case "execution.failed": {
       return {
-        ...base,
+        ...withAssistantMessageId(
+          base,
+          event.executionId,
+          (p.assistantMessageId as string) ?? null
+        ),
         activeExecution: null,
       };
     }
 
     case "execution.cancelled": {
       return {
-        ...base,
+        ...withAssistantMessageId(
+          base,
+          event.executionId,
+          (p.assistantMessageId as string) ?? null
+        ),
         activeExecution: null,
       };
     }

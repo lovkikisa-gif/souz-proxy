@@ -1,41 +1,78 @@
 import { useState } from "react";
+import { useNavigate, useOutletContext } from "react-router-dom";
+import { GeneralSettingsForm } from "../components/settings/GeneralSettingsForm";
 import { ModelSettingsForm } from "../components/settings/ModelSettingsForm";
 import { ToolSettingsForm } from "../components/settings/ToolSettingsForm";
 import { ProviderKeysPanel } from "../components/settings/ProviderKeysPanel";
+import { useAppPreferences } from "../preferences/AppPreferencesProvider";
+import { Button } from "../components/ui/Button";
+import {
+  settingsCardStyle,
+  settingsHeaderStyle,
+  settingsPageInnerStyle,
+  settingsPageStyle,
+  settingsTitleStyle,
+  tabButtonStyle,
+  tabListStyle,
+} from "../components/settings/styles";
 
-type Tab = "model" | "tools" | "keys";
+type Tab = "general" | "model" | "tools" | "keys";
+
+interface SettingsOutletContext {
+  lastVisitedChatId?: string | null;
+}
 
 export function SettingsPage() {
-  const [tab, setTab] = useState<Tab>("model");
+  const [tab, setTab] = useState<Tab>("general");
+  const navigate = useNavigate();
+  const { lastVisitedChatId } = useOutletContext<SettingsOutletContext>();
+  const { t } = useAppPreferences();
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: "model", label: "Model" },
-    { key: "tools", label: "Tools" },
-    { key: "keys", label: "Provider Keys" },
+    { key: "general", label: t("settings.tab.general") },
+    { key: "model", label: t("settings.tab.model") },
+    { key: "tools", label: t("settings.tab.tools") },
+    { key: "keys", label: t("settings.tab.keys") },
   ];
 
   return (
-    <div style={{ height: "100%", overflowY: "auto", padding: "32px 24px" }}>
-      <div style={{ maxWidth: 640, margin: "0 auto" }}>
-        <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 24,
-          background: "linear-gradient(135deg, var(--color-accent), #a78bfa)",
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-          Settings
-        </h1>
-        {/* Tab bar */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1px solid var(--color-border)", paddingBottom: 4 }}>
-          {tabs.map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{
-              padding: "8px 16px", fontSize: "0.8125rem", fontWeight: 500,
-              background: tab === t.key ? "var(--color-bg-tertiary)" : "transparent",
-              color: tab === t.key ? "var(--color-text-primary)" : "var(--color-text-muted)",
-              border: "none", borderRadius: "var(--radius-sm) var(--radius-sm) 0 0",
-              cursor: "pointer", transition: "all 0.15s",
-            }}>{t.label}</button>
+    <div style={settingsPageStyle}>
+      <div style={settingsPageInnerStyle}>
+        <div style={settingsHeaderStyle}>
+          <h1 style={settingsTitleStyle}>{t("settings.title")}</h1>
+          <Button
+            aria-label={t("settings.close")}
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              if (lastVisitedChatId) {
+                navigate(`/chats/${lastVisitedChatId}`);
+                return;
+              }
+
+              navigate("/chats");
+            }}
+          >
+            ✕
+          </Button>
+        </div>
+
+        <div style={tabListStyle}>
+          {tabs.map((tabOption) => (
+            <button
+              key={tabOption.key}
+              role="tab"
+              aria-selected={tab === tabOption.key}
+              onClick={() => setTab(tabOption.key)}
+              style={tabButtonStyle(tab === tabOption.key)}
+            >
+              {tabOption.label}
+            </button>
           ))}
         </div>
-        {/* Content */}
-        <div className="glass-card" style={{ padding: 24 }}>
+
+        <div className="glass-card" style={settingsCardStyle}>
+          {tab === "general" && <GeneralSettingsForm />}
           {tab === "model" && <ModelSettingsForm />}
           {tab === "tools" && <ToolSettingsForm />}
           {tab === "keys" && <ProviderKeysPanel />}

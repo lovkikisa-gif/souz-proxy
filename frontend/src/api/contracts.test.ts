@@ -84,6 +84,26 @@ describe("backend v1 response contracts", () => {
     );
   });
 
+  it("includes archived chat query params when requested", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        items: [],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getChats({ includeArchived: true, limit: 50 })).resolves.toEqual([]);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/v1/chats?includeArchived=true&limit=50",
+      expect.objectContaining({
+        method: "GET",
+      })
+    );
+  });
+
   it("unwraps telegram bot envelopes and hides delete payloads from callers", async () => {
     const fetchMock = vi
       .fn()
@@ -180,6 +200,24 @@ describe("backend v1 response contracts", () => {
         method: "DELETE",
       })
     );
+  });
+
+  it("treats telegram bot 404 reads as no binding", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: vi.fn().mockResolvedValue({
+          error: {
+            code: "not_found",
+            message: "Not found",
+          },
+        }),
+      })
+    );
+
+    await expect(getChatTelegramBot("chat-1")).resolves.toBeNull();
   });
 
   it("unwraps settings and provider key list envelopes", async () => {

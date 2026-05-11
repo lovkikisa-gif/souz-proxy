@@ -1,6 +1,7 @@
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "./http";
 import type { Chat } from "../types/chat";
 import { requireFieldResponse, unwrapItemsResponse } from "./responses";
+import { ApiError } from "../types/api";
 
 export type TelegramBotBindingDto = {
   chatId: string;
@@ -16,9 +17,26 @@ export type TelegramBotBindingDto = {
   linkedAt?: string;
 };
 
-export async function getChats(): Promise<Chat[]> {
+export interface GetChatsOptions {
+  includeArchived?: boolean;
+  limit?: number;
+}
+
+export async function getChats(options: GetChatsOptions = {}): Promise<Chat[]> {
+  const searchParams = new URLSearchParams();
+
+  if (options.includeArchived) {
+    searchParams.set("includeArchived", "true");
+  }
+  if (options.limit != null) {
+    searchParams.set("limit", String(options.limit));
+  }
+
+  const query = searchParams.toString();
+  const endpoint = query ? `/v1/chats?${query}` : "/v1/chats";
+
   return unwrapItemsResponse(
-    await apiGet<{ items?: Chat[] | null } | Chat[]>("/v1/chats")
+    await apiGet<{ items?: Chat[] | null } | Chat[]>(endpoint)
   );
 }
 
@@ -48,10 +66,17 @@ export function unarchiveChat(chatId: string): Promise<Chat> {
 export async function getChatTelegramBot(
   chatId: string
 ): Promise<TelegramBotBindingDto | null> {
-  const response = await apiGet<{ telegramBot: TelegramBotBindingDto | null }>(
-    `/v1/chats/${chatId}/telegram-bot`
-  );
-  return response.telegramBot ?? null;
+  try {
+    const response = await apiGet<{ telegramBot: TelegramBotBindingDto | null }>(
+      `/v1/chats/${chatId}/telegram-bot`
+    );
+    return response.telegramBot ?? null;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function upsertChatTelegramBot(

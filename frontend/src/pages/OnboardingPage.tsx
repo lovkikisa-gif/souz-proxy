@@ -4,6 +4,7 @@ import { completeOnboarding } from "../api/onboarding";
 import { getProviderKeys, setProviderKey, deleteProviderKey } from "../api/providerKeys";
 import { getSettings } from "../api/settings";
 import { useAuth } from "../auth/useAuth";
+import { localeOptions } from "../constants/locales";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
@@ -189,6 +190,7 @@ export function OnboardingPage() {
   }
 
   const keyMap = new Map(providerKeys.map((key) => [key.provider, key]));
+  const locales = localeOptions(form.locale);
   const hasUsableModelAccess = onboarding.hasUsableModelAccess;
   const canFinish =
     hasUsableModelAccess &&
@@ -923,14 +925,40 @@ export function OnboardingPage() {
                       </select>
                     </div>
 
-                    <Input
-                      label="Locale"
-                      value={form.locale}
-                      onChange={(event) =>
-                        updateForm("locale", event.target.value)
-                      }
-                      placeholder="ru-RU"
-                    />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label
+                        style={{
+                          fontSize: "0.8125rem",
+                          fontWeight: 500,
+                          color: "var(--color-text-secondary)",
+                        }}
+                      >
+                        Locale
+                      </label>
+                      <select
+                        aria-label="Locale"
+                        value={form.locale}
+                        onChange={(event) =>
+                          updateForm("locale", event.target.value)
+                        }
+                        style={{
+                          padding: "10px 14px",
+                          fontSize: "0.875rem",
+                          fontFamily: "var(--font-sans)",
+                          background: "var(--color-bg-primary)",
+                          color: "var(--color-text-primary)",
+                          border: "1px solid var(--color-border)",
+                          borderRadius: "var(--radius-md)",
+                          outline: "none",
+                        }}
+                      >
+                        {locales.map((locale) => (
+                          <option key={locale} value={locale}>
+                            {locale}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
                     <Input
                       label="Time zone"
