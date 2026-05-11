@@ -152,6 +152,7 @@ render_app_env() {
     append_env_if_set SOUZ_BACKEND_DB_CONNECTION_TIMEOUT_MS
     append_env_if_set SOUZ_BACKEND_DATA_DIR
 
+    append_env_if_set ENABLE_BACKEND_TG_FEATURE
     append_env_if_set SOUZ_FEATURE_WS_EVENTS
     append_env_if_set SOUZ_FEATURE_STREAMING_MESSAGES
     append_env_if_set SOUZ_FEATURE_TOOL_EVENTS

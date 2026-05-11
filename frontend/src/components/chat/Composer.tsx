@@ -41,10 +41,6 @@ export function Composer({
       e.preventDefault();
       handleSubmit();
     }
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      handleSubmit();
-    }
   };
 
   return (

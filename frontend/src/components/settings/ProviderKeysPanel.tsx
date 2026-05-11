@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
+import type { UserManagedProvider } from "../../types/onboarding";
 import type { ProviderKey } from "../../types/settings";
 import { getProviderKeys, setProviderKey, deleteProviderKey } from "../../api/providerKeys";
 import { useAuth } from "../../auth/useAuth";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { showToast } from "../ui/Toast";
+import { formStackStyle, helperTextStyle, sectionTitleStyle } from "./styles";
 
 export function ProviderKeysPanel() {
-  const { refreshOnboarding } = useAuth();
+  const { onboarding, refreshOnboarding } = useAuth();
   const [keys, setKeys] = useState<ProviderKey[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -19,16 +21,21 @@ export function ProviderKeysPanel() {
 
   useEffect(() => { load(); }, []);
 
+  const providers = mergeProviderRows(
+    onboarding?.availableUserManagedProviders ?? [],
+    keys
+  );
+
   if (loading) return <div className="skeleton" style={{ height: 80, width: "100%" }} />;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <h3 style={{ fontSize: "1rem", fontWeight: 600 }}>Provider Keys</h3>
-      <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+    <div style={formStackStyle}>
+      <h3 style={sectionTitleStyle}>Provider Keys</h3>
+      <p style={helperTextStyle}>
         Keys are stored securely and encrypted on the server. Full keys are never displayed.
       </p>
-      {keys.length === 0 && <p style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>No provider keys configured.</p>}
-      {keys.map((k) => (
+      {providers.length === 0 && <p style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>No provider keys configured.</p>}
+      {providers.map((k) => (
         <ProviderKeyRow
           key={k.provider}
           providerKey={k}
@@ -37,6 +44,30 @@ export function ProviderKeysPanel() {
         />
       ))}
     </div>
+  );
+}
+
+function mergeProviderRows(
+  providers: UserManagedProvider[],
+  keys: ProviderKey[]
+): ProviderKey[] {
+  const rows = new Map<string, ProviderKey>();
+
+  providers.forEach((provider) => {
+    rows.set(provider.provider, {
+      provider: provider.provider,
+      configured: provider.configured,
+      keyHint: null,
+      updatedAt: null,
+    });
+  });
+
+  keys.forEach((key) => {
+    rows.set(key.provider, key);
+  });
+
+  return [...rows.values()].sort((left, right) =>
+    left.provider.localeCompare(right.provider)
   );
 }
 

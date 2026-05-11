@@ -22,11 +22,19 @@ export function ToolActivity({ toolCalls }: ToolActivityProps) {
   ]
     .filter(Boolean)
     .join(", ");
+  const toolSummary = toolCalls.slice(0, 2).map((toolCall) => ({
+    toolName: toolCall.toolName,
+    summary:
+      summarizePreview(toolCall.argumentsPreview) ??
+      (toolCall.argumentKeys && toolCall.argumentKeys.length > 0
+        ? toolCall.argumentKeys.join(", ")
+        : null),
+  }));
 
   return (
     <div
       style={{
-        margin: "8px 0 16px",
+        margin: "8px 0 16px 44px",
         borderRadius: "var(--radius-md)",
         border: "1px solid var(--color-border)",
         overflow: "hidden",
@@ -50,8 +58,32 @@ export function ToolActivity({ toolCalls }: ToolActivityProps) {
       >
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: "0.875rem" }}>🔧</span>
-          Tool activity
-          <span style={{ color: "var(--color-text-muted)" }}>({summary})</span>
+          <span>Tool activity</span>
+          {toolSummary.length > 0 ? (
+            <span
+              style={{
+                color: "var(--color-text-muted)",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              (
+              {toolSummary.map(({ toolName, summary }, index) => (
+                <span key={`${toolName}-${index}`} style={{ display: "inline-flex", gap: 4 }}>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-secondary)" }}>
+                    {toolName}
+                  </span>
+                  {summary ? <span>{summary}</span> : null}
+                  {index < toolSummary.length - 1 ? <span>•</span> : null}
+                </span>
+              ))}
+              )
+            </span>
+          ) : summary ? (
+            <span style={{ color: "var(--color-text-muted)" }}>({summary})</span>
+          ) : null}
         </span>
         <span
           style={{
@@ -72,4 +104,24 @@ export function ToolActivity({ toolCalls }: ToolActivityProps) {
       )}
     </div>
   );
+}
+
+function summarizePreview(preview?: string | null): string | null {
+  if (!preview) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(preview) as Record<string, unknown>;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return Object.entries(parsed)
+        .slice(0, 2)
+        .map(([key, value]) => `${key}=${String(value)}`)
+        .join(", ");
+    }
+  } catch {
+    // keep the raw preview when it is not JSON
+  }
+
+  return preview.replace(/\s+/g, " ").trim().slice(0, 80);
 }

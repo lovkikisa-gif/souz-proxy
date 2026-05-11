@@ -34,6 +34,7 @@ export interface ToolCall {
   executionId: string;
   toolName: string;
   status: "running" | "finished" | "failed";
+  argumentKeys?: string[];
   argumentsPreview?: string | null;
   resultPreview?: string | null;
   error?: string | null;

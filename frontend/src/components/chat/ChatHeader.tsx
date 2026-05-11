@@ -1,10 +1,12 @@
 import { useState } from "react";
 import type { Chat } from "../../types/chat";
-import { updateChatTitle, archiveChat, unarchiveChat } from "../../api/chats";
+import { updateChatTitle } from "../../api/chats";
 import type { Execution } from "../../types/chat";
 import { TelegramBotSettings } from "./TelegramBotSettings";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
+import { useAuth } from "../../auth/useAuth";
+import { useAppPreferences } from "../../preferences/AppPreferencesProvider";
 
 interface ChatHeaderProps {
   chat: Chat | null;
@@ -25,9 +27,12 @@ export function ChatHeader({
   onMenuToggle,
   onChatUpdated,
 }: ChatHeaderProps) {
+  const { bootstrap } = useAuth();
+  const { t } = useAppPreferences();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState("");
   const [telegramOpen, setTelegramOpen] = useState(false);
+  const telegramEnabled = bootstrap?.features.telegramBot === true;
 
   const handleRename = async () => {
     if (!chat || !title.trim()) {
@@ -41,20 +46,6 @@ export function ChatHeader({
       // ignore
     }
     setEditing(false);
-  };
-
-  const handleArchive = async () => {
-    if (!chat) return;
-    try {
-      if (chat.archived) {
-        await unarchiveChat(chat.id);
-      } else {
-        await archiveChat(chat.id);
-      }
-      onChatUpdated();
-    } catch {
-      // ignore
-    }
   };
 
   return (
@@ -173,34 +164,18 @@ export function ChatHeader({
           </button>
         )}
 
-        {chat && (
+        {chat && telegramEnabled && (
           <Button
             variant="secondary"
             size="sm"
             onClick={() => setTelegramOpen(true)}
           >
-            Telegram
+            {t("chat.telegram")}
           </Button>
-        )}
-
-        {chat && (
-          <button
-            onClick={handleArchive}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--color-text-muted)",
-              cursor: "pointer",
-              fontSize: "0.75rem",
-              padding: "4px 8px",
-            }}
-          >
-            {chat.archived ? "Unarchive" : "Archive"}
-          </button>
         )}
       </div>
 
-      {chat && (
+      {chat && telegramEnabled && (
         <Modal open={telegramOpen} onClose={() => setTelegramOpen(false)}>
           <TelegramBotSettings key={chat.id} chatId={chat.id} />
         </Modal>

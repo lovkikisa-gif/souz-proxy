@@ -19,4 +19,6 @@ cp deploy/.env.example deploy/.env
 ./deploy/deploy-vm.sh
 ```
 
+When the VM still uses password-based SSH access, `./deploy/deploy-vm.sh` prompts for the SSH password once at the start and reuses the same control connection for the remaining `ssh` and `scp` steps.
+
 Do not rotate SOUZ_MASTER_KEY without a key migration plan. Existing user-managed provider keys may become undecryptable.

@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { getSettings, updateSettings } from "../../api/settings";
 import { useAuth } from "../../auth/useAuth";
+import { useAppPreferences } from "../../preferences/AppPreferencesProvider";
 import { Button } from "../ui/Button";
 import { showToast } from "../ui/Toast";
+import { actionsRowStyle, formStackStyle, sectionTitleStyle } from "./styles";
 
 function unique(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean)));
@@ -15,10 +17,10 @@ export function ToolSettingsForm() {
     refreshBootstrap,
     refreshOnboarding,
   } = useAuth();
+  const { t } = useAppPreferences();
   const seedSettings = bootstrap?.settings ?? onboarding?.currentSettings ?? null;
   const [enabled, setEnabled] = useState<string[]>([]);
   const [showTool, setShowTool] = useState(true);
-  const [streaming, setStreaming] = useState(true);
   const [loading, setLoading] = useState(!seedSettings);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -32,7 +34,6 @@ export function ToolSettingsForm() {
     if (seedSettings && !dirty) {
       setEnabled(seedSettings.enabledTools);
       setShowTool(seedSettings.showToolEvents);
-      setStreaming(seedSettings.streamingMessages);
       setLoading(false);
       setDirty(false);
     }
@@ -47,7 +48,6 @@ export function ToolSettingsForm() {
         if (!cancelled && !dirty) {
           setEnabled(settings.enabledTools);
           setShowTool(settings.showToolEvents);
-          setStreaming(settings.streamingMessages);
         }
       } catch {
         // keep seed settings
@@ -73,11 +73,11 @@ export function ToolSettingsForm() {
   const save = async () => {
     setSaving(true);
     try {
-      await updateSettings({ enabledTools: enabled, showToolEvents: showTool, streamingMessages: streaming });
+      await updateSettings({ enabledTools: enabled, showToolEvents: showTool });
       await Promise.allSettled([refreshBootstrap(), refreshOnboarding()]);
       setDirty(false);
-      showToast("Settings saved", "success");
-    } catch { showToast("Failed to save"); }
+      showToast(t("settings.saved"), "success");
+    } catch { showToast(t("settings.failed")); }
     finally { setSaving(false); }
   };
 
@@ -86,33 +86,35 @@ export function ToolSettingsForm() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <h3 style={{ fontSize: "1rem", fontWeight: 600 }}>Tools & Interface</h3>
+    <div style={formStackStyle}>
+      <h3 style={sectionTitleStyle}>{t("settings.tools.title")}</h3>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <label style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--color-text-secondary)" }}>Enabled Tools</label>
+        <label style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--color-text-secondary)" }}>{t("settings.tools.enabledTools")}</label>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {allTools.map((t) => (
-            <button key={t} onClick={() => toggleTool(t)} style={{
+          {allTools.map((toolName) => (
+            <button key={toolName} onClick={() => toggleTool(toolName)} style={{
               padding: "6px 12px", fontSize: "0.75rem", fontFamily: "var(--font-mono)", borderRadius: "var(--radius-sm)", cursor: "pointer", transition: "all 0.15s",
-              background: enabled.includes(t) ? "rgba(139,92,246,0.2)" : "var(--color-bg-primary)",
-              border: `1px solid ${enabled.includes(t) ? "var(--color-border-active)" : "var(--color-border)"}`,
-              color: enabled.includes(t) ? "var(--color-accent)" : "var(--color-text-muted)",
-            }}>{t}</button>
+              background: enabled.includes(toolName) ? "rgba(139,92,246,0.2)" : "var(--color-bg-primary)",
+              border: `1px solid ${enabled.includes(toolName) ? "var(--color-border-active)" : "var(--color-border)"}`,
+              color: enabled.includes(toolName) ? "var(--color-accent)" : "var(--color-text-muted)",
+            }}>{toolName}</button>
           ))}
-          {allTools.length === 0 && <span style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>No tools available</span>}
+          {allTools.length === 0 && <span style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>{t("settings.tools.none")}</span>}
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
           <input type="checkbox" checked={showTool} onChange={(e) => { setShowTool(e.target.checked); setDirty(true); }} />
-          <span style={{ fontSize: "0.8125rem" }}>Show tool events in chat</span>
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-          <input type="checkbox" checked={streaming} onChange={(e) => { setStreaming(e.target.checked); setDirty(true); }} />
-          <span style={{ fontSize: "0.8125rem" }}>Stream messages</span>
+          <span style={{ fontSize: "0.8125rem" }}>{t("settings.tools.showToolEvents")}</span>
         </label>
       </div>
-      {dirty && <Button onClick={save} loading={saving} size="sm">Save</Button>}
+      {dirty && (
+        <div style={actionsRowStyle}>
+          <Button onClick={save} loading={saving} size="sm">
+            {t("common.save")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

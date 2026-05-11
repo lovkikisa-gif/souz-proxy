@@ -53,6 +53,7 @@ class DeploymentArtifactsTest {
         assertTrue(prodCompose.contains("\${WELCOME_KEY_SECRET:?"))
         assertTrue(prodCompose.contains("\${PROXY_DB_PASSWORD:?"))
         assertTrue(prodCompose.contains("\${BACKEND_DB_PASSWORD:?"))
+        assertTrue(prodCompose.contains("ENABLE_BACKEND_TG_FEATURE: \"\${ENABLE_BACKEND_TG_FEATURE:-false}\""))
         assertTrue(prodCompose.contains("SOUZ_FEATURE_WS_EVENTS: \"\${SOUZ_FEATURE_WS_EVENTS:-true}\""))
         assertTrue(prodCompose.contains("SOUZ_FEATURE_STREAMING_MESSAGES: \"\${SOUZ_FEATURE_STREAMING_MESSAGES:-true}\""))
         assertTrue(prodCompose.contains("SOUZ_FEATURE_TOOL_EVENTS: \"\${SOUZ_FEATURE_TOOL_EVENTS:-true}\""))
@@ -64,6 +65,7 @@ class DeploymentArtifactsTest {
     fun `deploy helpers document bundle export and production startup`() {
         assertFileContains("deploy/.env.example", "SOUZ_MASTER_KEY=replace_me_long_random_value")
         assertFileContains("deploy/.env.example", "TELEGRAM_TOKEN_ENCRYPTION_KEY=replace_me_long_random_value")
+        assertFileContains("deploy/.env.example", "# ENABLE_BACKEND_TG_FEATURE=true")
         assertFileContains("deploy/.env.example", "# COOKIE_NAME=souz_session")
         assertFileContains("deploy/.env.example", "# SOUZ_BACKEND_DB_SCHEMA=public")
         assertFileContains("deploy/.env.example", "# OPENAI_API_KEY=")
@@ -81,14 +83,23 @@ class DeploymentArtifactsTest {
     }
 
     @Test
+    fun `welcome key hash helper stays independent from gradle runtime`() {
+        assertFileContains("hash-welcome-key.sh", "openssl dgst -sha256 -hmac")
+        assertFileContains("hash-welcome-key.sh", "WELCOME_KEY_SECRET")
+        assertFileDoesNotContain("hash-welcome-key.sh", "./gradlew hashWelcomeKey")
+    }
+
+    @Test
     fun `vm deploy automation ships dedicated config and remote bootstrap scripts`() {
         assertFileContains("deploy/common.sh", "load_env_file()")
         assertFileContains("deploy/deploy.env.example", "DEPLOY_HOST=")
         assertFileContains("deploy/deploy.env.example", "REMOTE_APP_DIR=/opt/souz")
         assertFileContains("deploy/deploy.env.example", "BUILD_IMAGES_LOCALLY=true")
         assertFileContains("deploy/deploy.env.example", "TELEGRAM_TOKEN_ENCRYPTION_KEY=replace_me_long_random_value")
+        assertFileContains("deploy/deploy.env.example", "# ENABLE_BACKEND_TG_FEATURE=true")
         assertFileContains("deploy/deploy-vm.sh", "require_env TELEGRAM_TOKEN_ENCRYPTION_KEY")
         assertFileContains("deploy/deploy-vm.sh", "append_env_line TELEGRAM_TOKEN_ENCRYPTION_KEY")
+        assertFileContains("deploy/deploy-vm.sh", "append_env_if_set ENABLE_BACKEND_TG_FEATURE")
         assertFileContains("deploy/deploy-vm.sh", "ControlMaster=auto")
         assertFileContains("deploy/deploy-vm.sh", "ControlPersist=10m")
         assertFileContains("deploy/deploy-vm.sh", "SSH control connection established.")
@@ -106,6 +117,12 @@ class DeploymentArtifactsTest {
         val path = repoRoot.resolve(relativePath)
         assertTrue(path.exists(), "$relativePath should exist.")
         assertTrue(path.readText().contains(needle), "$relativePath should contain: $needle")
+    }
+
+    private fun assertFileDoesNotContain(relativePath: String, needle: String) {
+        val path = repoRoot.resolve(relativePath)
+        assertTrue(path.exists(), "$relativePath should exist.")
+        assertTrue(!path.readText().contains(needle), "$relativePath should not contain: $needle")
     }
 
     private fun read(relativePath: String): String {

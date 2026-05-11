@@ -8,6 +8,7 @@ interface MessageListProps {
   messages: Message[];
   streamingContent: Record<string, string>;
   toolCalls: Record<string, ToolCall>;
+  executionAssistantMessageIds: Record<string, string>;
   options: Record<string, OptionRequest>;
   onOptionAnswered: () => void;
 }
@@ -16,6 +17,7 @@ export function MessageList({
   messages,
   streamingContent,
   toolCalls,
+  executionAssistantMessageIds,
   options,
   onOptionAnswered,
 }: MessageListProps) {
@@ -61,9 +63,37 @@ export function MessageList({
     );
   }
 
-  // Collect tool calls and options by execution to show them after messages
   const toolCallList = Object.values(toolCalls);
   const optionList = Object.values(options);
+  const toolCallsByMessageId: Record<string, ToolCall[]> = {};
+  const unassignedToolCalls: ToolCall[] = [];
+  const streamingAssistantIds = Object.entries(streamingContent)
+    .filter(([id]) => !messages.some((message) => message.id === id))
+    .map(([id]) => id);
+  const fallbackAssistantMessageId =
+    streamingAssistantIds[0] ??
+    [...messages].reverse().find((message) => message.role === "assistant")?.id ??
+    null;
+
+  toolCallList.forEach((toolCall) => {
+    const messageId = executionAssistantMessageIds[toolCall.executionId];
+    if (messageId) {
+      toolCallsByMessageId[messageId] = [
+        ...(toolCallsByMessageId[messageId] ?? []),
+        toolCall,
+      ];
+      return;
+    }
+
+    unassignedToolCalls.push(toolCall);
+  });
+
+  if (fallbackAssistantMessageId && unassignedToolCalls.length > 0) {
+    toolCallsByMessageId[fallbackAssistantMessageId] = [
+      ...(toolCallsByMessageId[fallbackAssistantMessageId] ?? []),
+      ...unassignedToolCalls,
+    ];
+  }
 
   return (
     <div
@@ -76,15 +106,20 @@ export function MessageList({
       <div style={{ maxWidth: 768, margin: "0 auto", padding: "0 20px" }}>
         {messages.map((msg) => {
           const streaming = streamingContent[msg.id];
-          // Find tool calls for this message's context
-          const isAssistant = msg.role === "assistant";
 
           return (
-            <div key={msg.id} className="animate-fade-in">
+            <div
+              key={msg.id}
+              className="animate-fade-in"
+              data-testid={`message-${msg.id}`}
+            >
               <MessageBubble
                 message={msg}
                 streamingDelta={streaming}
               />
+              {(toolCallsByMessageId[msg.id] ?? []).length > 0 ? (
+                <ToolActivity toolCalls={toolCallsByMessageId[msg.id]} />
+              ) : null}
             </div>
           );
         })}
@@ -93,7 +128,11 @@ export function MessageList({
         {Object.entries(streamingContent)
           .filter(([id]) => !messages.some((m) => m.id === id))
           .map(([id, content]) => (
-            <div key={id} className="animate-fade-in">
+            <div
+              key={id}
+              className="animate-fade-in"
+              data-testid={`message-${id}`}
+            >
               <MessageBubble
                 message={{
                   id,
@@ -104,13 +143,11 @@ export function MessageList({
                 }}
                 streamingDelta={content}
               />
+              {(toolCallsByMessageId[id] ?? []).length > 0 ? (
+                <ToolActivity toolCalls={toolCallsByMessageId[id]} />
+              ) : null}
             </div>
           ))}
-
-        {/* Tool activity */}
-        {toolCallList.length > 0 && (
-          <ToolActivity toolCalls={toolCallList} />
-        )}
 
         {/* Option cards */}
         {optionList
